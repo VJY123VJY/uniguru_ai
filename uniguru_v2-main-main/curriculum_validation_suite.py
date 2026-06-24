@@ -343,7 +343,7 @@ def validate_static_authority(records: List[Dict[str, Any]]) -> List[str]:
 
 def validate_retrieval_contract() -> List[str]:
     errors: List[str] = []
-    from retrieval.retrieval_engine import retrieve_from_masterdb
+    from backend.retrieval.retrieval_engine import retrieve_from_masterdb
     from learning_runtime.canonical_runtime import execute_query
 
     first = retrieve_from_masterdb("What is counting?", grade=1, subject="Mathematics")

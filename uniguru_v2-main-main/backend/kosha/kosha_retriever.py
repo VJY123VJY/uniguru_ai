@@ -4,7 +4,7 @@ import hashlib
 from .kosha_validator import KoshaEntry
 from governance.source_governance import SourceGovernance
 from ontology.entity_resolver import CanonicalEntityResolver
-from retrieval.ontology_retriever import OntologyAwareRetriever
+from backend.retrieval.ontology_retriever import OntologyAwareRetriever
 
 class KoshaRetriever:
     def __init__(self, entries: List[KoshaEntry]):

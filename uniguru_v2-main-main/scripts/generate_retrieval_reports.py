@@ -11,7 +11,7 @@ if str(ROOT) not in sys.path:
 
 from learning_runtime.learning_intelligence import build_learning_intelligence
 from backend.memory.constitutional_semantic_memory import utc_now_iso
-from retrieval.retrieval_engine import (
+from backend.retrieval.retrieval_engine import (
     build_curriculum_graph,
     generate_retrieval_artifact,
     load_masterdb_records,

@@ -1,7 +1,7 @@
 from typing import Dict, Any, List, Optional
 
-from retrieval.kb_engine import retrieve as local_retrieve
-from retrieval.web_retriever import web_retrieve
+from backend.retrieval.kb_engine import retrieve as local_retrieve
+from backend.retrieval.web_retriever import web_retrieve
 
 class TruthValidator:
     """

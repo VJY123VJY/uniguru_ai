@@ -189,9 +189,9 @@ Key variables (see `.env.example`):
 
 **Correct:**
 ```python
-from retrieval.retriever import AdvancedRetriever
-from retrieval.kb_engine import retrieve
-from retrieval.web_retriever import web_retrieve
+from backend.retrieval.retriever import AdvancedRetriever
+from backend.retrieval.kb_engine import retrieve
+from backend.retrieval.web_retriever import web_retrieve
 ```
 
 **Incorrect (old paths):**

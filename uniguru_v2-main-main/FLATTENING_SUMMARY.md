@@ -72,7 +72,7 @@ from uniguru.ontology.registry import OntologyRegistry
 **After:**
 ```python
 from service.api import app
-from retrieval.retriever import AdvancedRetriever
+from backend.retrieval.retriever import AdvancedRetriever
 from ontology.registry import OntologyRegistry
 ```
 
@@ -95,7 +95,7 @@ from ontology.registry import OntologyRegistry
 from uniguru.retrieval.retriever import AdvancedRetriever
 
 # After (cleaner)
-from retrieval.retriever import AdvancedRetriever
+from backend.retrieval.retriever import AdvancedRetriever
 ```
 
 ### 2. **Clearer Structure**
@@ -141,7 +141,7 @@ Follows common Python project structure where the package contents are directly 
 
 ### Import Pattern Check
 ✅ No more `from uniguru.` imports  
-✅ All imports use direct module names: `from service.`, `from retrieval.`, etc.
+✅ All imports use direct module names: `from service.`, `from backend.retrieval.`, etc.
 
 ### Path Reference Check
 ✅ All KB paths updated to `backend/knowledge/`  
@@ -185,9 +185,9 @@ from service.query_classifier import classify_query
 
 ### Retrieval Layer
 ```python
-from retrieval.retriever import AdvancedRetriever
-from retrieval.kb_engine import retrieve
-from retrieval.web_retriever import web_retrieve
+from backend.retrieval.retriever import AdvancedRetriever
+from backend.retrieval.kb_engine import retrieve
+from backend.retrieval.web_retriever import web_retrieve
 ```
 
 ### Ontology Layer

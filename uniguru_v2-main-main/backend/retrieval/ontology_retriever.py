@@ -3,7 +3,7 @@ from __future__ import annotations
 from typing import Any, Dict, List
 
 from ontology.entity_resolver import CanonicalEntityResolver
-from retrieval.embedding_provider import EmbeddingProvider, LocalHashEmbeddingProvider
+from backend.retrieval.embedding_provider import EmbeddingProvider, LocalHashEmbeddingProvider
 
 
 class OntologyAwareRetriever:

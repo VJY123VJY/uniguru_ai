@@ -9,7 +9,7 @@ sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
 from kosha.kosha_loader import KoshaLoader
 from kosha.kosha_retriever import KoshaRetriever
-from retrieval.ontology_retriever import OntologyAwareRetriever
+from backend.retrieval.ontology_retriever import OntologyAwareRetriever
 from ontology.entity_resolver import CanonicalEntityResolver
 
 

@@ -23,7 +23,7 @@ if str(ROOT) not in sys.path:
 
 from governance.constitutional_runtime import ConstitutionalCognitionRuntime
 from learning_runtime.learning_intelligence import build_learning_intelligence
-from retrieval.retrieval_engine import retrieve_from_masterdb
+from backend.retrieval.retrieval_engine import retrieve_from_masterdb
 from memory.constitutional_semantic_memory import stable_hash, utc_now_iso
 
 

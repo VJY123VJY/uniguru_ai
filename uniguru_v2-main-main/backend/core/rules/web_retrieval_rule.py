@@ -1,5 +1,5 @@
 from core.rules.base import BaseRule, RuleContext, RuleResult, RuleAction
-from retrieval.web_retriever import web_retrieve
+from backend.retrieval.web_retriever import web_retrieve
 from verifier.source_verifier import VerificationStatus
 
 class WebRetrievalRule(BaseRule):

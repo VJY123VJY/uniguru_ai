@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from typing import Any, Dict, Optional
 
-from retrieval.retrieval_engine import retrieve_from_masterdb
+from backend.retrieval.retrieval_engine import retrieve_from_masterdb
 from .learning_intelligence import build_learning_intelligence
 
 
