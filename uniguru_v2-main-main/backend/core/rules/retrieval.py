@@ -2,7 +2,7 @@ import re
 import os
 
 from core.rules.base import BaseRule, RuleContext, RuleResult, RuleAction
-from retrieval.retriever import retrieve_knowledge_with_trace
+from backend.retrieval.retriever import retrieve_knowledge_with_trace
 from verifier.source_verifier import SourceVerifier
 
 KB_CONFIDENCE_THRESHOLD = float(os.getenv("UNIGURU_KB_CONFIDENCE_THRESHOLD", "0.45"))
