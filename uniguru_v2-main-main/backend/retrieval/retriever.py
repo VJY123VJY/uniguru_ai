@@ -2,8 +2,8 @@ import os
 import re
 from typing import Any, Dict, List, Optional, Tuple
 
-from reasoning.concept_resolver import ConceptResolver
-from reasoning.graph_reasoner import GraphReasoner
+from backend.reasoning.concept_resolver import ConceptResolver
+from backend.reasoning.graph_reasoner import GraphReasoner
 
 # Paths for knowledge bases
 _MODULE_DIR = os.path.dirname(__file__)

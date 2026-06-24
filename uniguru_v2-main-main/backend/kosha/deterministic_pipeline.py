@@ -25,7 +25,7 @@ from kosha.semantic_boundary import (
     build_truth_interpretation_link,
 )
 from memory.semantic_memory import SemanticMemoryStore
-from reasoning.semantic_traversal import SemanticTraversalEngine
+from backend.reasoning.semantic_traversal import SemanticTraversalEngine
 
 logger = logging.getLogger(__name__)
 

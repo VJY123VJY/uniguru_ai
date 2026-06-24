@@ -6,9 +6,9 @@ from core.engine import RuleEngine
 from enforcement.enforcement import UniGuruEnforcement
 from governance.output_guard import OutputGovernanceGuard
 from ontology.registry import OntologyRegistry
-from reasoning.concept_resolver import ConceptResolver
-from reasoning.graph_reasoner import GraphReasoner
-from reasoning.reasoning_trace import ReasoningTraceGenerator
+from backend.reasoning.concept_resolver import ConceptResolver
+from backend.reasoning.graph_reasoner import GraphReasoner
+from backend.reasoning.reasoning_trace import ReasoningTraceGenerator
 from retrieval.web_retriever import web_retrieve
 
 
