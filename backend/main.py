@@ -15,11 +15,11 @@ app = FastAPI()
 # CORS CONFIG (PRODUCTION FIX)
 # =========================
 
+
 app.add_middleware(
     CORSMiddleware,
     allow_origins=[
         "http://localhost:5173",
-        "http://localhost:5174",
         "https://uniguru-ai-3.onrender.com"
     ],
     allow_credentials=True,
