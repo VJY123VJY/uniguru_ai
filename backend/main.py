@@ -10,7 +10,9 @@ from routers.query_router import router as query_router
 # =========================
 
 app = FastAPI()
-
+@app.options("/{rest_of_path:path}")
+async def options_handler(rest_of_path: str):
+    return {"status": "ok"}
 # =========================
 # CORS CONFIG (PRODUCTION FIX)
 # =========================
@@ -20,7 +22,9 @@ app.add_middleware(
     CORSMiddleware,
     allow_origins=[
         "http://localhost:5173",
-        "https://uniguru-ai-3.onrender.com"
+        "https://uniguru-ai-3.onrender.com",
+        "https://uni-guru.in",
+        "https://www.uni-guru.in"
     ],
     allow_credentials=True,
     allow_methods=["*"],
