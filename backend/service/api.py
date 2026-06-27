@@ -560,13 +560,50 @@ async def _process_router_request(
     context_map["allow_web"] = bool(allow_web or query_type == QueryType.WEB_LOOKUP)
     context_map["source_language"] = adapted.source_language
 
-    response = await conversation_router.route_query(query=normalized_query, context=context_map)
-    response = _ensure_non_empty_answer(
-        response,
-        query=normalized_query,
-        session_id=session_id,
-        caller=caller_name,
-    )
+    clean_query = normalized_query.strip().strip("?!.,").lower()
+    if clean_query in {"hello", "hi", "hey"}:
+        request_id = str(uuid.uuid4())
+        response = {
+            "decision": "direct_reply",
+            "answer": "Hello! Kuch to kaho",
+            "session_id": session_id,
+            "reason": "Direct greeting reply",
+            "ontology_reference": {
+                "concept_id": "router::greeting",
+                "domain": "routing",
+            },
+            "reasoning_trace": {
+                "sources_consulted": ["greeting_handler"],
+                "retrieval_confidence": 1.0,
+                "ontology_domain": "routing",
+                "verification_status": "PASSED",
+                "verification_details": "Direct greeting reply active.",
+            },
+            "governance_flags": {"safety": False, "fallback_mode": False},
+            "governance_output": {
+                "allowed": True,
+                "reason": "greeting",
+                "flags": {"router_route": "ROUTE_DIRECT"},
+            },
+            "verification_status": "PASSED",
+            "enforcement_signature": hashlib.sha256(f"{request_id}|direct-greeting".encode("utf-8")).hexdigest(),
+            "request_id": request_id,
+            "sealed_at": _utc_now_iso(),
+            "latency_ms": 0.0,
+            "routing": {
+                "query_type": classify_query(normalized_query).value,
+                "route": "ROUTE_DIRECT",
+                "router_latency_ms": 0.0,
+            },
+        }
+    else:
+        response = await conversation_router.route_query(query=normalized_query, context=context_map)
+        response = _ensure_non_empty_answer(
+            response,
+            query=normalized_query,
+            session_id=session_id,
+            caller=caller_name,
+        )
     response = language_adapter.localize_response(response=response, source_language=adapted.source_language)
     latency_ms = (time.perf_counter() - started) * 1000
 
