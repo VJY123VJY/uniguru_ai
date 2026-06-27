@@ -108,7 +108,7 @@ _default_cors_origins = [
     "https://www.uni-guru.in",
 ]
 _cors_origins_raw = os.getenv("UNIGURU_CORS_ORIGINS", ",".join(_default_cors_origins))
-_cors_origins = [origin.strip() for origin in _cors_origins_raw.split(",") if origin.strip()]
+_cors_origins = [origin.strip().rstrip("/") for origin in _cors_origins_raw.split(",") if origin.strip()]
 
 app.add_middleware(
     CORSMiddleware,
