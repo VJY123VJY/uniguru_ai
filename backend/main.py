@@ -14,10 +14,10 @@ app.add_middleware(
     CORSMiddleware,
     allow_origins=[
         "http://localhost:5173",
-        "http://127.0.0.1:5173",
+        "https://uniguru-ai-3.onrender.com",
 
         # Add your Render frontend URL here
-        # "https://your-frontend.onrender.com"
+        # "https://uniguru-ai-3.onrender.com"
     ],
     allow_credentials=True,
     allow_methods=["*"],
