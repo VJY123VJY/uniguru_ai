@@ -1,48 +1,47 @@
-from service.api import app
-from routers.query_router import router as query_router
+from fastapi.middleware.cors import CORSMiddleware
+from fastapi.openapi.utils import get_openapi
 import uvicorn
 import os
 
-from fastapi.middleware.cors import CORSMiddleware
-from fastapi.openapi.utils import get_openapi
+from routers.query_router import router as query_router
 
 # =========================
-# CORS Configuration
+# App Init
+# =========================
+
+app = FastAPI()
+
+# =========================
+# CORS CONFIG (PRODUCTION FIX)
 # =========================
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=[
-        "http://localhost:5173",
-        "https://uniguru-ai-3.onrender.com",
-
-        # Add your Render frontend URL here
-        # "https://uniguru-ai-3.onrender.com"
-    ],
+    allow_origin_regex=r"https://.*onrender\.com",
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )
 
 # =========================
-# Register Routers
+# Routers
 # =========================
 
 app.include_router(query_router)
 
 # =========================
-# Debug Endpoint
+# Debug Route
 # =========================
 
 @app.get("/debug/ping")
 async def debug_ping():
     return {
         "status": "success",
-        "message": "UniGuru Modular Router is reachable"
+        "message": "UniGuru backend is working"
     }
 
 # =========================
-# Swagger Auth Configuration
+# Swagger Security (JWT)
 # =========================
 
 def custom_openapi():
@@ -52,7 +51,7 @@ def custom_openapi():
     openapi_schema = get_openapi(
         title="UniGuru Intelligence Engine",
         version="2.0.0",
-        description="Sovereign AI reasoning engine with deterministic priority.",
+        description="AI backend system",
         routes=app.routes,
     )
 
@@ -76,7 +75,7 @@ def custom_openapi():
 app.openapi = custom_openapi
 
 # =========================
-# Run App
+# Run (Local only)
 # =========================
 
 if __name__ == "__main__":
