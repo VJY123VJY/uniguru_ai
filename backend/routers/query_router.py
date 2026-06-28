@@ -24,6 +24,25 @@ async def ask_uniguru(request: QueryRequest):
         query = request.query or request.question
         logger.info(f"Received intelligence query: {query}")
         print(f"> Intelligence Request: {query}")
+
+        clean_query = query.strip().strip("?!.,").lower()
+        if clean_query in {"hello", "hi", "hey"}:
+            suggested_question = "What is the core purpose of human life according to Swaminarayan teachings?"
+            suggested_answer = (
+                "According to Swaminarayan teachings, the core purpose of human life is to attain "
+                "spiritual progress through dharma, bhakti, gnan, and vairagya, while living in satsang "
+                "and drawing closer to Bhagwan."
+            )
+            return response_formatter.format_response(
+                decision="answer",
+                confidence=1.0,
+                source="none",
+                answer=(
+                    "Hello! Kuch to kaho\n\n"
+                    f"Suggested Swaminarayan question: {suggested_question}\n"
+                    f"Answer: {suggested_answer}"
+                ),
+            )
         
         # 1. Run Validation
         validation = validation_service.validate_query(query)
