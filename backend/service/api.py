@@ -563,9 +563,15 @@ async def _process_router_request(
     clean_query = normalized_query.strip().strip("?!.,").lower()
     if clean_query in {"hello", "hi", "hey"}:
         request_id = str(uuid.uuid4())
+        suggested_question = "What is the core purpose of human life according to Swaminarayan teachings?"
+        suggested_answer = (
+            "According to Swaminarayan teachings, the core purpose of human life is to attain "
+            "spiritual progress through dharma, bhakti, gnan, and vairagya, while living in satsang "
+            "and drawing closer to Bhagwan."
+        )
         response = {
             "decision": "direct_reply",
-            "answer": "Hello! Kuch to kaho",
+            "answer": f"Hello! Kuch to kaho\n\nSuggested Swaminarayan question: {suggested_question}\nAnswer: {suggested_answer}",
             "session_id": session_id,
             "reason": "Direct greeting reply",
             "ontology_reference": {
@@ -595,6 +601,8 @@ async def _process_router_request(
                 "route": "ROUTE_DIRECT",
                 "router_latency_ms": 0.0,
             },
+            "suggested_question": suggested_question,
+            "suggested_answer": suggested_answer,
         }
     else:
         response = await conversation_router.route_query(query=normalized_query, context=context_map)
