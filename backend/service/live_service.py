@@ -91,7 +91,7 @@ class LiveUniGuruService:
             user_query
         )
 
-
+    
         # ===============================
         # STEP 1 : RETRIEVAL
         # ===============================
@@ -114,6 +114,12 @@ class LiveUniGuruService:
                 "match_found": False,
                 "error": str(e)
             }
+
+            print("========== RETRIEVAL DEBUG ==========")
+        print("QUERY:", user_query)
+        print("CONTENT:", retrieved_content)
+        print("TRACE:", retrieval_trace)
+        print("====================================")
 
 
 
