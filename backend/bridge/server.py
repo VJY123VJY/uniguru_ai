@@ -51,6 +51,40 @@ def _build_engine_headers(caller: str) -> Dict[str, str]:
     return headers
 
 
+def _build_greeting_response(user_msg: str, trace_id: str) -> Dict[str, Any]:
+    suggested_question = "What is the core purpose of human life according to Swaminarayan teachings?"
+    suggested_answer = (
+        "According to Swaminarayan teachings, the core purpose of human life is to attain "
+        "spiritual progress through dharma, bhakti, gnan, and vairagya, while living in satsang "
+        "and drawing closer to Bhagwan."
+    )
+    return {
+        "decision": "answer",
+        "verification_status": "VERIFIED",
+        "reason": "Direct greeting reply",
+        "answer": (
+            "Hello! Kuch to kaho\n\n"
+            f"Suggested Swaminarayan question: {suggested_question}\n"
+            f"Answer: {suggested_answer}"
+        ),
+        "source": "none",
+        "confidence": 1.0,
+        "trace_id": trace_id,
+        "data": {
+            "response_content": (
+                "Hello! Kuch to kaho\n\n"
+                f"Suggested Swaminarayan question: {suggested_question}\n"
+                f"Answer: {suggested_answer}"
+            )
+        },
+        "greeting": {
+            "matched": user_msg,
+            "suggested_question": suggested_question,
+            "suggested_answer": suggested_answer,
+        },
+    }
+
+
 @app.post("/chat")
 async def chat_bridge(request: ChatRequest):
     trace_id = str(uuid.uuid4())
@@ -59,6 +93,14 @@ async def chat_bridge(request: ChatRequest):
 
     if not user_msg:
         raise HTTPException(status_code=400, detail="No valid query provided.")
+
+    clean_msg = user_msg.strip().strip("?!.,").lower()
+    if clean_msg in {"hello", "hi", "hey"}:
+        sealed_response = enforcer.process_and_seal(_build_greeting_response(user_msg, trace_id), trace_id)
+        if not enforcer.verify_bridge_seal(sealed_response):
+            raise HTTPException(status_code=500, detail="Enforcement Seal Violation: Tampering Detected.")
+        sealed_response["latency_ms"] = round((time.time() - start_time) * 1000, 2)
+        return sealed_response
 
     decision = engine.evaluate(
         user_msg,
