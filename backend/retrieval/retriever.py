@@ -131,20 +131,48 @@ def _try_markdown_search(query: str) -> Tuple[Optional[str], Dict[str, Any], flo
     """Full-text scan of knowledge/*.md when index misses."""
     start = time.perf_counter()
     kb_root = os.path.normpath(os.path.join(os.path.dirname(__file__), "..", "knowledge"))
-    stopwords = {
-        "the", "a", "an", "and", "or", "but", "is", "are", "was", "were", "to", "of",
-        "in", "on", "at", "by", "for", "from", "as", "with", "about", "what", "who",
-        "how", "why", "when", "where", "explain", "tell", "describe", "lord",
-    }
+    query_lower = query.lower()
+    query_words = query_lower.split()
     query_terms = {
-        t for t in re.findall(r"[a-zA-Z0-9\u0900-\u097F]+", query.lower()) if len(t) > 2 and t not in stopwords
+        t for t in re.findall(r"[a-zA-Z0-9\u0900-\u097F]+", query_lower) if len(t) > 2
     }
-    if not query_terms:
+    if not query_words and not query_terms:
         return None, {"match_found": False, "confidence": 0.0, "method": "markdown_search"}, 0.0
 
-    best_score = 0.0
-    best_content = None
-    best_source = None
+    def calculate_score(query: str, doc: Dict[str, Any]) -> float:
+        score = 0
+
+        query_words = query.lower().split()
+
+        title = str(doc.get("title", "")).lower()
+        content = str(doc.get("content", "")).lower()
+        source = str(doc.get("source", "")).lower()
+        category = str(doc.get("category", "")).lower()
+
+        for word in query_words:
+            if word in title:
+                score += 5
+
+            if word in source:
+                score += 4
+
+            if word in category:
+                score += 4
+
+            if word in content:
+                score += 1
+
+        # biography priority
+        if "biography" in query.lower():
+            if "biography" in source:
+                score += 10
+
+            if "life" in title:
+                score += 8
+
+        return score
+
+    candidates: List[Dict[str, Any]] = []
 
     try:
         for root, _dirs, files in os.walk(kb_root):
@@ -158,28 +186,44 @@ def _try_markdown_search(query: str) -> Tuple[Optional[str], Dict[str, Any], flo
                 except OSError:
                     continue
 
-                text_lower = text.lower()
-                overlap = sum(1 for term in query_terms if term in text_lower)
-                if overlap == 0:
+                rel_path = os.path.relpath(path, kb_root)
+                category = os.path.dirname(rel_path).replace("\\", "/")
+                stem = os.path.splitext(file_name)[0]
+                title = stem.replace("_", " ").strip()
+                document = {
+                    "title": title,
+                    "content": text,
+                    "source": file_name,
+                    "category": category,
+                    "path": path,
+                }
+                score = calculate_score(query, document)
+                if score <= 0:
                     continue
+                candidates.append(
+                    {
+                        "score": score,
+                        "document": document,
+                        "content": text,
+                        "source": file_name,
+                    }
+                )
 
-                score = overlap / len(query_terms)
-                # Boost when filename matches query entity
-                stem = os.path.splitext(file_name)[0].lower().replace("_", " ")
-                if any(term in stem for term in query_terms):
-                    score = min(1.0, score + 0.25)
-
-                if score > best_score:
-                    best_score = score
-                    best_content = text
-                    best_source = file_name
+        candidates.sort(key=lambda item: item["score"], reverse=True)
 
         latency = (time.perf_counter() - start) * 1000
-        if best_content and best_score >= 0.25:
+        if candidates:
+            best = candidates[0]
+            best_score = float(best["score"])
+            best_content = best["content"]
+            best_source = best["source"]
+
             # Extract readable body (skip frontmatter)
             body = re.sub(r"^---[\s\S]*?---\n*", "", best_content, flags=re.MULTILINE).strip()
             if len(body) > 2500:
                 body = body[:2500].rsplit(" ", 1)[0] + "..."
+            print("QUERY:", query)
+            print("DOCUMENT:", best.get("document", {}).get("title"), "SCORE:", best_score)
             content, trace = _normalize_trace(
                 query=query,
                 content=body,
@@ -189,10 +233,14 @@ def _try_markdown_search(query: str) -> Tuple[Optional[str], Dict[str, Any], flo
                 source=best_source,
                 verification_status="VERIFIED",
                 latency_ms=latency,
-                extra={"matched_terms": len(query_terms)},
+                extra={
+                    "matched_terms": len(query_terms),
+                    "document_count": len(candidates),
+                    "similarity_scores": [float(item["score"]) for item in candidates[:5]],
+                },
             )
             return content, trace, latency
-        return None, {"match_found": False, "confidence": best_score, "method": "markdown_search", "latency_ms": round(latency, 2)}, latency
+        return None, {"match_found": False, "confidence": 0.0, "method": "markdown_search", "latency_ms": round(latency, 2)}, latency
     except Exception as exc:
         latency = (time.perf_counter() - start) * 1000
         log_rag_error("markdown_search", query, str(exc))
