@@ -368,8 +368,8 @@ def retrieve_knowledge_with_trace(query: str) -> Tuple[Optional[str], Dict[str, 
                 best_content = content
                 best_trace = trace
 
-        # Early exit on strong Kosha hit
-        if method == "kosha_deterministic" and trace.get("match_found") and float(trace.get("confidence") or 0) >= 0.18:
+        # Early exit only on a strong Kosha hit; otherwise let KB evidence compete.
+        if method == "kosha_deterministic" and trace.get("match_found") and float(trace.get("confidence") or 0) >= 0.75:
             break
 
     total_latency = (time.perf_counter() - start) * 1000
@@ -399,7 +399,7 @@ class AdvancedRetriever:
             cls._instance._initialized = False
         return cls._instance
 
-    def __init__(self, top_n: int = 3):
+    def __init__(self, top_n: int = 5):
         if self._initialized:
             return
         self.top_n = top_n

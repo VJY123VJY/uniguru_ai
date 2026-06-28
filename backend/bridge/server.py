@@ -52,11 +52,12 @@ def _build_engine_headers(caller: str) -> Dict[str, str]:
 
 
 def _build_greeting_response(user_msg: str, trace_id: str) -> Dict[str, Any]:
-    suggested_question = "What is the core purpose of human life according to Swaminarayan teachings?"
+    suggested_question = "Tell me about Bhagwan Swaminarayan's life."
     suggested_answer = (
-        "According to Swaminarayan teachings, the core purpose of human life is to attain "
-        "spiritual progress through dharma, bhakti, gnan, and vairagya, while living in satsang "
-        "and drawing closer to Bhagwan."
+        "Bhagwan Swaminarayan, born as Ghanshyam Pande on April 3, 1781 in Chhapaiya, was the "
+        "founder and central deity of the Swaminarayan Sampradaya. As Nilkanth Varni, he undertook "
+        "a seven-year pilgrimage across India, later became Sahajanand Swami, and is remembered for "
+        "his spiritual leadership, the divine name Swaminarayan, and major social reforms."
     )
     return {
         "decision": "answer",
@@ -64,8 +65,8 @@ def _build_greeting_response(user_msg: str, trace_id: str) -> Dict[str, Any]:
         "reason": "Direct greeting reply",
         "answer": (
             "Hello! Kuch to kaho\n\n"
-            f"Suggested Swaminarayan question: {suggested_question}\n"
-            f"Answer: {suggested_answer}"
+            f"Swaminarayan knowledge: {suggested_answer}\n\n"
+            f"Suggested question: {suggested_question}"
         ),
         "source": "none",
         "confidence": 1.0,
@@ -73,8 +74,8 @@ def _build_greeting_response(user_msg: str, trace_id: str) -> Dict[str, Any]:
         "data": {
             "response_content": (
                 "Hello! Kuch to kaho\n\n"
-                f"Suggested Swaminarayan question: {suggested_question}\n"
-                f"Answer: {suggested_answer}"
+                f"Swaminarayan knowledge: {suggested_answer}\n\n"
+                f"Suggested question: {suggested_question}"
             )
         },
         "greeting": {
