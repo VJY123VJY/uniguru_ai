@@ -26,6 +26,27 @@ class LiveUniGuruService:
         self.concept_resolver = ConceptResolver()
 
 
+    def _handle_small_talk(self, query: str):
+        greetings = {
+            "hi": "Hello 👋 How can I help you today?",
+            "hello": "Hello 👋 How can I help you today?",
+            "hey": "Hey 👋 What can I do for you?",
+            
+            "good morning": "Good morning 🌞 How can I help you?",
+            "good afternoon": "Good afternoon 😊 How can I assist you?",
+            "good evening": "Good evening 🌙 How can I help you?",
+
+            "thanks": "You're welcome 😊",
+            "thank you": "You're welcome 😊",
+
+            "bye": "Goodbye 👋 Have a great day!"
+        }
+
+        text = query.lower().strip()
+
+        return greetings.get(text)
+
+
     async def ask(
         self,
         user_query: str,
@@ -34,25 +55,40 @@ class LiveUniGuruService:
         allow_web_retrieval: bool = False,
     ) -> Dict[str, Any]:
 
-
         start_time = time.perf_counter()
 
-
         metadata = dict(context or {})
+        metadata["session_id"] = session_id
 
-        metadata.update(
-            {
-                "session_id": session_id,
-                "allow_web_retrieval": allow_web_retrieval,
-                "request_type": "live_query"
-            }
-        )
-
+        caller = metadata.get("caller")
 
         log_incoming_request(
             user_query,
             session_id=session_id,
-            caller=metadata.get("caller")
+            caller=caller
+        )
+
+
+        small_talk = self._handle_small_talk(user_query)
+
+        if small_talk:
+            return {
+                "decision": "answer",
+                "confidence": 1.0,
+                "source": "small_talk",
+                "answer": small_talk,
+                "session_id": session_id,
+                "reason": "Greeting handled directly",
+                "verification_status": "VERIFIED",
+                "routing": {
+                    "route": "SMALL_TALK"
+                }
+            }
+
+
+        content, retrieval_trace = await asyncio.to_thread(
+            retrieve_knowledge_with_trace,
+            user_query
         )
 
 
