@@ -1,5 +1,4 @@
 import os
-import fitz  # PyMuPDF
 from typing import Dict, Any, Optional
 
 class FileParser:
@@ -84,6 +83,11 @@ class FileParser:
     @staticmethod
     def parse_pdf(file_path: str) -> Dict[str, Any]:
         try:
+            try:
+                import fitz  # PyMuPDF
+            except ImportError as e:
+                return {"content": "", "metadata": {"error": f"PyMuPDF not installed: {e}", "path": file_path}}
+
             doc = fitz.open(file_path)
             text = ""
             for page in doc:

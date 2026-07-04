@@ -13,6 +13,7 @@ from pydantic import BaseModel, Field
 class QueryRequest(BaseModel):
     query: str = Field("", description="The user question or query.")
     question: str = Field("", description="Alternative key for the user question.")
+    subject: Optional[str] = Field(None, description="Optional subject/topic selection from UI (e.g., Programming)")
 
 @router.post("/ask")
 async def ask_uniguru(request: QueryRequest):
@@ -59,7 +60,7 @@ async def ask_uniguru(request: QueryRequest):
         logger.info("Attempting deterministic ontology retrieval...")
         from retrieval.retriever import retrieve_knowledge_with_trace
 
-        content, trace = retrieve_knowledge_with_trace(query)
+        content, trace = retrieve_knowledge_with_trace(query, subject=request.subject)
         if content and trace.get("match_found") and float(trace.get("confidence") or 0) >= 0.30:
             logger.info("Unified retriever match with confidence %s", trace.get("confidence"))
             return response_formatter.format_response(

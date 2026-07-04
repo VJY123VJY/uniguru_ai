@@ -563,15 +563,35 @@ async def _process_router_request(
     clean_query = normalized_query.strip().strip("?!.,").lower()
     if clean_query in {"hello", "hi", "hey"}:
         request_id = str(uuid.uuid4())
-        suggested_question = "What is the core purpose of human life according to Swaminarayan teachings?"
-        suggested_answer = (
-            "According to Swaminarayan teachings, the core purpose of human life is to attain "
-            "spiritual progress through dharma, bhakti, gnan, and vairagya, while living in satsang "
-            "and drawing closer to Bhagwan."
-        )
+        chatbot_id = context_map.get("chatbot_id") or context_map.get("guru_id")
+        guru_subject = None
+        if chatbot_id:
+            guru = guru_storage.get_guru(str(chatbot_id))
+            if guru:
+                guru_subject = str(guru.subject or "").strip().lower()
+
+        if guru_subject and any(term in guru_subject for term in ["program", "python", "javascript", "coding", "developer"]):
+            suggested_question = "How do you declare a function in Python and then call it?"
+            suggested_answer = (
+                "In Python, define a function using `def`, then call it by name with parentheses. "
+                "For example:\n````python\ndef greet():\n    print('Hello')\n\ngreet()\n````"
+            )
+            response_title = "Programming"
+        else:
+            suggested_question = "What is the core purpose of human life according to Swaminarayan teachings?"
+            suggested_answer = (
+                "According to Swaminarayan teachings, the core purpose of human life is to attain "
+                "spiritual progress through dharma, bhakti, gnan, and vairagya, while living in satsang "
+                "and drawing closer to Bhagwan."
+            )
+            response_title = "Swaminarayan"
+
         response = {
             "decision": "direct_reply",
-            "answer": f"Hello! Kuch to kaho\n\nSuggested Swaminarayan question: {suggested_question}\nAnswer: {suggested_answer}",
+            "answer": (
+                f"Hello! Kuch to kaho\n\nSuggested {response_title} question: {suggested_question}\n"
+                f"Answer: {suggested_answer}"
+            ),
             "session_id": session_id,
             "reason": "Direct greeting reply",
             "ontology_reference": {

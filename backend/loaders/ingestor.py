@@ -1,24 +1,33 @@
 import os
 import json
 import re
+import sys
+import time
 from typing import List, Dict, Any
-try:
-    from loaders.file_parser import FileParser
-except ImportError:
-    from loaders.file_parser import FileParser
+
+script_dir = os.path.dirname(os.path.abspath(__file__))
+if script_dir not in sys.path:
+    sys.path.insert(0, script_dir)
+
+from file_parser import FileParser
 
 
 class KnowledgeIngestor:
     """
     Ingests files and builds a keyword-based runtime index.
-    Saves artifacts under knowledge/index/.
+    Saves artifacts under backend/knowledge/index/ by default.
     """
 
     def __init__(self, index_dir: str = "knowledge/index"):
-        self.index_dir = index_dir
+        base_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+        if not os.path.isabs(index_dir):
+            index_dir = os.path.join(base_dir, index_dir)
+
+        self.index_dir = os.path.normpath(index_dir)
         self.parser = FileParser()
         self.index: Dict[str, List[Dict[str, Any]]] = {}
         self.ingestion_log: List[Dict[str, Any]] = []
+        self._seen_content = set()
 
         if not os.path.exists(self.index_dir):
             os.makedirs(self.index_dir)
@@ -26,9 +35,12 @@ class KnowledgeIngestor:
     def _clean_text(self, text: str) -> str:
         return re.sub(r"[^\w\s]", " ", text.lower())
 
+    def _normalize_text(self, text: str) -> str:
+        return re.sub(r"\s+", " ", re.sub(r"[^\w\s]", " ", text.lower())).strip()
+
     def _extract_keywords(self, text: str) -> List[str]:
         words = self._clean_text(text).split()
-        return sorted(set(w for w in words if len(w) > 3))
+        return sorted({w for w in words if len(w) > 3})[:5]
 
     @staticmethod
     def _extract_frontmatter_value(content: str, key: str) -> str:
@@ -43,6 +55,11 @@ class KnowledgeIngestor:
             if k.strip().lower() == key.lower():
                 return v.strip()
         return ""
+
+    @staticmethod
+    def _normalize_path(path: str) -> str:
+        normalized = os.path.normpath(path)
+        return normalized.replace("\\", "/")
 
     def ingest_directory(self, directory: str, category: str = "general"):
         """Walks through a directory and ingests all supported files."""
@@ -70,19 +87,29 @@ class KnowledgeIngestor:
 
                 if status == "UNSPECIFIED" and category in ["jain", "swaminarayan", "gurukul"]:
                     status = "VERIFIED"
-                
-                metadata["verification_status"] = status
 
                 base_keyword = os.path.splitext(file_name)[0].lower().replace("_", " ")
+                metadata["verification_status"] = status
+                metadata["title"] = str(metadata.get("title") or base_keyword.replace("_", " ").title()).strip()
+                normalized_path = self._normalize_path(file_path)
+                metadata["path"] = normalized_path
+                metadata["source_lineage"] = {"original_path": normalized_path}
+                metadata["ingested_at"] = time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime())
+
+                normalized_content = self._normalize_text(content)
+                if not normalized_content or normalized_content in self._seen_content:
+                    continue
+                self._seen_content.add(normalized_content)
+
                 self._add_to_index(base_keyword, content, metadata)
 
-                dynamic_keywords = self._extract_keywords(base_keyword)[:5]
+                dynamic_keywords = self._extract_keywords(base_keyword + " " + metadata["title"])
                 for keyword in dynamic_keywords:
                     self._add_to_index(keyword, content, metadata)
 
                 self.ingestion_log.append(
                     {
-                        "path": metadata.get("path"),
+                        "path": normalized_path,
                         "category": category,
                         "verification_status": metadata.get("verification_status"),
                     }
@@ -92,9 +119,17 @@ class KnowledgeIngestor:
         if keyword not in self.index:
             self.index[keyword] = []
 
-        existing_sources = [entry["metadata"]["path"] for entry in self.index[keyword]]
-        if metadata["path"] not in existing_sources:
-            self.index[keyword].append({"content": content, "metadata": metadata})
+        normalized_content = self._normalize_text(content)
+        existing_paths = [entry["metadata"]["path"] for entry in self.index[keyword]]
+        existing_contents = {
+            self._normalize_text(entry.get("content", ""))
+            for entry in self.index[keyword]
+        }
+
+        if metadata["path"] in existing_paths or normalized_content in existing_contents:
+            return
+
+        self.index[keyword].append({"content": content, "metadata": metadata})
 
     def _build_runtime_summary(self) -> Dict[str, Any]:
         summary: Dict[str, Any] = {
@@ -139,5 +174,4 @@ if __name__ == "__main__":
     ingestor.ingest_directory("backend/knowledge/gurukul", category="gurukul")
     ingestor.ingest_directory("backend/knowledge/jain", category="jain")
     ingestor.ingest_directory("backend/knowledge/swaminarayan", category="swaminarayan")
-
-    ingestor.save_index()
+    ingestor.ingest_directory("backend/knowledge/programming", category="programming")

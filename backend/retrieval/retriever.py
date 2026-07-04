@@ -7,7 +7,7 @@ import re
 import time
 from typing import Any, Dict, List, Optional, Tuple
 
-from retrieval.kb_engine import retrieve as kb_retrieve
+from retrieval.kb_engine import retrieve as kb_retrieve, retrieve_with_candidates as kb_retrieve_with_candidates
 from utils.rag_logger import log_retrieval_result, log_rag_error
 
 logger = logging.getLogger("uniguru.retrieval")
@@ -47,7 +47,7 @@ def _normalize_trace(
     return content, trace
 
 
-def _try_kosha(query: str) -> Tuple[Optional[str], Dict[str, Any], float]:
+def _try_kosha(query: str, subject: Optional[str] = None) -> Tuple[Optional[str], Dict[str, Any], float]:
     start = time.perf_counter()
     try:
         from kosha.deterministic_pipeline import run_deterministic_pipeline
@@ -94,10 +94,59 @@ def _try_kosha(query: str) -> Tuple[Optional[str], Dict[str, Any], float]:
         return None, {"match_found": False, "confidence": 0.0, "method": "kosha_deterministic", "error": str(exc)}, latency
 
 
-def _try_keyword_kb(query: str) -> Tuple[Optional[str], Dict[str, Any], float]:
+def _clean_candidate_text(text: str) -> str:
+    text = re.sub(r"\s+", " ", str(text or "")).strip()
+    text = re.sub(r"\s*\[[0-9]+\]\s*", " ", text)
+    return text.strip()
+
+
+def synthesize_retrieval_answer(query: str, candidates: List[Dict[str, Any]]) -> str:
+    if not candidates:
+        return ""
+
+    seen_sentences = set()
+    selected_sentences: List[str] = []
+    ranked = sorted(
+        candidates,
+        key=lambda item: float(item.get("score") or 0.0),
+        reverse=True,
+    )
+
+    for candidate in ranked[:5]:
+        content = _clean_candidate_text(candidate.get("content") or "")
+        if not content:
+            continue
+        if re.search(r"\bi don't know\b|not explicitly|provided context does not", content, re.IGNORECASE):
+            continue
+        for sentence in re.split(r"(?<=[.!?])\s+", content):
+            sentence = sentence.strip()
+            if not sentence:
+                continue
+            normalized = re.sub(r"\s+", " ", sentence).strip()
+            key = normalized.lower()
+            if key in seen_sentences:
+                continue
+            seen_sentences.add(key)
+            selected_sentences.append(normalized)
+            if len(selected_sentences) >= 6:
+                break
+        if len(selected_sentences) >= 6:
+            break
+
+    if len(selected_sentences) < 3:
+        return ""
+    return " ".join(selected_sentences[:6]).strip()
+
+
+def _try_keyword_kb(query: str, subject: Optional[str] = None) -> Tuple[Optional[str], Dict[str, Any], float]:
     start = time.perf_counter()
     try:
-        result = kb_retrieve(query)
+        # Pass subject selection into KB retrieval so callers can restrict domains
+        try:
+            result = kb_retrieve_with_candidates(query, subject=subject)
+        except TypeError:
+            # backward compatibility if kb_engine not updated
+            result = kb_retrieve_with_candidates(query)
         latency = (time.perf_counter() - start) * 1000
         answer = str(result.get("answer") or "").strip()
         confidence = float(result.get("confidence_level") or 0.0)
@@ -113,6 +162,9 @@ def _try_keyword_kb(query: str) -> Tuple[Optional[str], Dict[str, Any], float]:
                 source=result.get("source_file"),
                 verification_status="VERIFIED",
                 latency_ms=latency,
+                extra={
+                    "candidate_count": len(result.get("candidates") or []),
+                },
             )
             return content, trace, latency
         return None, {
@@ -127,48 +179,55 @@ def _try_keyword_kb(query: str) -> Tuple[Optional[str], Dict[str, Any], float]:
         return None, {"match_found": False, "confidence": 0.0, "method": "keyword_kb", "error": str(exc)}, latency
 
 
-def _try_markdown_search(query: str) -> Tuple[Optional[str], Dict[str, Any], float]:
+def _try_markdown_search(query: str, subject: Optional[str] = None) -> Tuple[Optional[str], Dict[str, Any], float]:
     """Full-text scan of knowledge/*.md when index misses."""
     start = time.perf_counter()
     kb_root = os.path.normpath(os.path.join(os.path.dirname(__file__), "..", "knowledge"))
     query_lower = query.lower()
-    query_words = query_lower.split()
-    query_terms = {
-        t for t in re.findall(r"[a-zA-Z0-9\u0900-\u097F]+", query_lower) if len(t) > 2
+    stopwords = {
+        "the", "a", "an", "and", "or", "but", "if", "then", "else", "is", "are", "was", "were",
+        "be", "been", "being", "to", "of", "in", "on", "at", "by", "for", "from", "as", "with",
+        "about", "into", "over", "under", "who", "whom", "whose", "what", "which", "when", "where",
+        "why", "how", "any", "one", "name", "text", "related",
     }
-    if not query_words and not query_terms:
+    query_terms = {
+        t for t in re.findall(r"[a-zA-Z0-9\u0900-\u097F]+", query_lower)
+        if len(t) > 2 and t not in stopwords
+    }
+    if not query_terms:
         return None, {"match_found": False, "confidence": 0.0, "method": "markdown_search"}, 0.0
 
-    def calculate_score(query: str, doc: Dict[str, Any]) -> float:
+    def calculate_score(query_terms: set, doc: Dict[str, Any]) -> float:
         score = 0
+        title_terms = set(re.findall(r"[a-zA-Z0-9\u0900-\u097F]+", str(doc.get("title", "")).lower()))
+        content_terms = set(re.findall(r"[a-zA-Z0-9\u0900-\u097F]+", str(doc.get("content", "")).lower()))
+        source_terms = set(re.findall(r"[a-zA-Z0-9\u0900-\u097F]+", str(doc.get("source", "")).lower()))
+        category_terms = set(re.findall(r"[a-zA-Z0-9\u0900-\u097F]+", str(doc.get("category", "")).lower()))
 
-        query_words = query.lower().split()
-
-        title = str(doc.get("title", "")).lower()
-        content = str(doc.get("content", "")).lower()
-        source = str(doc.get("source", "")).lower()
-        category = str(doc.get("category", "")).lower()
-
-        for word in query_words:
-            if word in title:
+        for term in query_terms:
+            if term in title_terms:
                 score += 5
-
-            if word in source:
+            if term in source_terms:
                 score += 4
-
-            if word in category:
+            if term in category_terms:
                 score += 4
-
-            if word in content:
+            if term in content_terms:
                 score += 1
 
-        # biography priority
-        if "biography" in query.lower():
-            if "biography" in source:
+        # bio and topic priority
+        if "biography" in query_lower:
+            if "biography" in source_terms:
                 score += 10
-
-            if "life" in title:
+            if "life" in title_terms:
                 score += 8
+
+        if "upanishad" in query_lower or "purana" in query_lower or "ayurveda" in query_lower:
+            if "upanishad" in title_terms or "upanishad" in category_terms or "upanishad" in source_terms:
+                score += 4
+            if "purana" in title_terms or "purana" in category_terms or "purana" in source_terms:
+                score += 4
+            if "ayurveda" in title_terms or "ayurveda" in category_terms or "ayurveda" in source_terms:
+                score += 4
 
         return score
 
@@ -197,7 +256,7 @@ def _try_markdown_search(query: str) -> Tuple[Optional[str], Dict[str, Any], flo
                     "category": category,
                     "path": path,
                 }
-                score = calculate_score(query, document)
+                score = calculate_score(query_terms, document)
                 if score <= 0:
                     continue
                 candidates.append(
@@ -215,18 +274,27 @@ def _try_markdown_search(query: str) -> Tuple[Optional[str], Dict[str, Any], flo
         if candidates:
             best = candidates[0]
             best_score = float(best["score"])
-            best_content = best["content"]
             best_source = best["source"]
 
-            # Extract readable body (skip frontmatter)
-            body = re.sub(r"^---[\s\S]*?---\n*", "", best_content, flags=re.MULTILINE).strip()
-            if len(body) > 2500:
-                body = body[:2500].rsplit(" ", 1)[0] + "..."
-            print("QUERY:", query)
-            print("DOCUMENT:", best.get("document", {}).get("title"), "SCORE:", best_score)
+            selected_bodies = []
+            seen = set()
+            for candidate in candidates[:5]:
+                body = re.sub(r"^---[\s\S]*?---\n*", "", candidate["content"], flags=re.MULTILINE).strip()
+                normalized = re.sub(r"\s+", " ", body).strip()[:400]
+                if not normalized or normalized in seen:
+                    continue
+                seen.add(normalized)
+                selected_bodies.append(body)
+                if len(selected_bodies) >= 5:
+                    break
+
+            combined_body = "\n\n".join(selected_bodies)
+            if len(combined_body) > 2500:
+                combined_body = combined_body[:2500].rsplit(" ", 1)[0] + "..."
+
             content, trace = _normalize_trace(
                 query=query,
-                content=body,
+                content=combined_body,
                 confidence=best_score,
                 match_found=True,
                 method="markdown_search",
@@ -332,6 +400,36 @@ def retrieve_knowledge_with_trace(query: str) -> Tuple[Optional[str], Dict[str, 
     Unified synchronous retrieval cascade:
     Kosha (deterministic) -> keyword index -> markdown full-text -> FAISS semantic.
     """
+    subject: Optional[str] = None
+    # Detect programming intent from the query and override subject when necessary
+    programming_indicators = [
+        "python",
+        "javascript",
+        "java",
+        "c++",
+        "c#",
+        "sort",
+        "list",
+        "array",
+        "function",
+        "loop",
+        "for loop",
+        "lambda",
+        "pip",
+        "numpy",
+        "pandas",
+        "django",
+        "flask",
+        "script",
+        "code",
+        "program",
+        "programming",
+    ]
+
+    qlower = query.lower()
+    if any(ind in qlower for ind in programming_indicators):
+        logger.info("Programming intent detected in query; constraining retrieval to Programming domain")
+        subject = "Programming"
     from kosha.signal_validator import SignalValidator
 
     if SignalValidator.is_off_topic_query(query):
@@ -358,7 +456,11 @@ def retrieve_knowledge_with_trace(query: str) -> Tuple[Optional[str], Dict[str, 
     )
 
     for retrieve_fn in retrievers:
-        content, trace, _latency = retrieve_fn(query)
+        # pass subject forward when supported
+        try:
+            content, trace, _latency = retrieve_fn(query, subject=subject)
+        except TypeError:
+            content, trace, _latency = retrieve_fn(query)
         method = str(trace.get("method") or retrieve_fn.__name__)
         sources_consulted.append(method)
 

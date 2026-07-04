@@ -1,7 +1,9 @@
 from RAG.new_rag_query import get_engine
 import logging
+import os
 
 logger = logging.getLogger(__name__)
+TOP_K = int(os.getenv("UNIGURU_RAG_TOP_K", "5"))
 
 class RAGService:
     def __init__(self):
@@ -17,18 +19,18 @@ class RAGService:
         """
         if not self.engine:
             return None
-            
+
         try:
-            results = self.engine.retrieve(query, top_k=3)
-            if not results:
+            result = self.engine.answer_question(query, top_k=TOP_K)
+            if not result or not result.get("retrieved"):
                 return None
-                
-            best = results[0]
-            # Map score to confidence
+
+            retrieved = result["retrieved"]
+            top_score = max((float(chunk.get("score") or 0.0) for chunk in retrieved), default=0.0)
             return {
-                "answer": best["text"],
-                "confidence": float(best["score"]),
-                "source": "vectorstore"
+                "answer": result.get("answer", ""),
+                "confidence": top_score,
+                "source": "vectorstore",
             }
         except Exception as e:
             logger.error(f"RAG search error: {str(e)}")
