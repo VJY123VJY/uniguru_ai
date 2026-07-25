@@ -590,7 +590,7 @@ def _process_router_request(
         request_id = str(uuid.uuid4())
         response = {
             "decision": "direct_reply",
-            "answer": "Hello! Kuch to kaho",
+            "answer": "Hello! How can I help you today?",
             "session_id": session_id,
             "reason": "Direct greeting reply",
             "ontology_reference": {
