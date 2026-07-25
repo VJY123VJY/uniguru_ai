@@ -6,12 +6,12 @@ from typing import Any, Dict, List
 
 logger = logging.getLogger("uniguru.rag.engine")
 
-MIN_SIMILARITY_THRESHOLD = float(os.getenv("UNIGURU_RAG_CONFIDENCE_MIN", "0.78"))
+MIN_SIMILARITY_THRESHOLD = float(os.getenv("UNIGURU_RAG_CONFIDENCE_MIN", "0.75"))
 TOP_K = int(os.getenv("UNIGURU_RAG_TOP_K", "5"))
 
 base_dir = os.path.dirname(os.path.abspath(__file__))
-db_path = os.path.join(base_dir, "chunks.db")
-faiss_path = os.path.join(base_dir, "faiss_index.bin")
+db_path = os.path.join(base_dir, "chunks_v3.db")
+faiss_path = os.path.join(base_dir, "faiss_index_v3.bin")
 
 engine = None
 
@@ -78,21 +78,49 @@ class NewRAGEngine:
         except Exception:
             return None
 
-    def retrieve(self, query: str, top_k: int = 5):
+    def retrieve(self, query: str, top_k: int = 20, class_level: str = None, subject: str = None, language: str = None, domain: str = None, doc_type: str = None, topic: str = None):
         query_emb = self.model.encode([query])
         self._faiss.normalize_L2(query_emb)
-        scores, ids = self.index.search(query_emb, top_k)
+        search_k = 50 if (class_level or subject or language or domain or doc_type or topic) else top_k
+        scores, ids = self.index.search(query_emb, search_k)
 
         candidates: List[Dict[str, Any]] = []
         with sqlite3.connect(self.db_path) as conn:
+            # Ensure columns exist dynamically
+            for col in ["class_level", "subject", "chapter", "source", "language", "domain", "type", "topic"]:
+                try:
+                    conn.execute(f"ALTER TABLE chunks ADD COLUMN {col} TEXT")
+                except sqlite3.OperationalError:
+                    pass
+                    
             cur = conn.cursor()
             for score, doc_id in zip(scores[0], ids[0]):
                 if doc_id == -1:
                     continue
-                cur.execute(
-                    "SELECT file_name, page_number, text FROM chunks WHERE id = ?",
-                    (int(doc_id),),
-                )
+                
+                query_sql = "SELECT file_name, page_number, text, class_level, subject, chapter, source, language, domain, type, topic FROM chunks WHERE id = ?"
+                params = [int(doc_id)]
+                
+                if class_level:
+                    query_sql += " AND class_level = ?"
+                    params.append(class_level)
+                if subject:
+                    query_sql += " AND LOWER(subject) = LOWER(?)"
+                    params.append(subject)
+                if language:
+                    query_sql += " AND LOWER(language) = LOWER(?)"
+                    params.append(language)
+                if domain:
+                    query_sql += " AND LOWER(domain) = LOWER(?)"
+                    params.append(domain)
+                if doc_type:
+                    query_sql += " AND LOWER(type) = LOWER(?)"
+                    params.append(doc_type)
+                if topic:
+                    query_sql += " AND LOWER(topic) = LOWER(?)"
+                    params.append(topic)
+                    
+                cur.execute(query_sql, tuple(params))
                 row = cur.fetchone()
                 if not row:
                     continue
@@ -100,7 +128,18 @@ class NewRAGEngine:
                     {
                         "id": int(doc_id),
                         "text": row[2],
-                        "metadata": {"file_name": row[0], "page_number": row[1]},
+                        "metadata": {
+                            "file_name": row[0], 
+                            "page_number": row[1],
+                            "class_level": row[3],
+                            "subject": row[4],
+                            "chapter": row[5],
+                            "source": row[6],
+                            "language": row[7],
+                            "domain": row[8],
+                            "type": row[9],
+                            "topic": row[10]
+                        },
                         "score": float(score),
                     }
                 )
@@ -163,10 +202,26 @@ class NewRAGEngine:
         user_prompt = f"Context:\n{context}\n\nQuestion: {query}\n\nAnswer:"
         return self.ollama.generate(user_prompt, system_prompt=system_prompt) or ""
 
-    def answer_question(self, query: str, max_context_chars: int = 4000, top_k: int = 5):
-        retrieved = self.retrieve(query, top_k=top_k)
+    def answer_question(self, query: str, max_context_chars: int = 4000, top_k: int = 5, class_level: str = None, subject: str = None, language: str = None, domain: str = None, doc_type: str = None, topic: str = None):
+        retrieved = self.retrieve(query, top_k=20, class_level=class_level, subject=subject, language=language, domain=domain, doc_type=doc_type, topic=topic)
         if not retrieved:
             return {"answer": "No relevant context found.", "retrieved": []}
+
+        try:
+            from retrieval.reranker import reranker
+            retrieved = reranker.rerank_and_filter(retrieved, expected_class=class_level, expected_subject=subject, top_k=top_k)
+        except Exception as e:
+            logger.error(f"Reranking failed: {e}")
+            retrieved = retrieved[:top_k]
+
+        if not retrieved:
+            return {"answer": "I could not find the correct textbook information. Please try again.", "retrieved": []}
+
+        # Apply strict score thresholding
+        valid_retrieved = [c for c in retrieved if c.get("score", 0.0) >= MIN_SIMILARITY_THRESHOLD]
+        if not valid_retrieved:
+            return {"answer": f"I could not find sufficiently relevant information (highest confidence: {retrieved[0].get('score', 0.0)} < {MIN_SIMILARITY_THRESHOLD}). Please refine your query.", "retrieved": retrieved}
+        retrieved = valid_retrieved
 
         context_parts = []
         for i, chunk in enumerate(retrieved):

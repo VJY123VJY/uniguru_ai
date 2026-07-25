@@ -344,14 +344,23 @@ def _get_semantic_engine():
         return None
 
 
-def _try_faiss(query: str, top_k: int = 5) -> Tuple[Optional[str], Dict[str, Any], float]:
+def _try_faiss(query: str, top_k: int = 5, subject: Optional[str] = None, class_level: Optional[str] = None, language: Optional[str] = None, domain: Optional[str] = None, doc_type: Optional[str] = None) -> Tuple[Optional[str], Dict[str, Any], float]:
     start = time.perf_counter()
     engine = _get_semantic_engine()
     if engine is None:
         return None, {"match_found": False, "confidence": 0.0, "method": "faiss_semantic", "reason": "index_unavailable"}, 0.0
 
     try:
-        results = engine.retrieve(query, top_k=top_k)
+        results = engine.retrieve(query, top_k=20, subject=subject, class_level=class_level, language=language, domain=domain, doc_type=doc_type)
+        
+        # Rerank
+        try:
+            from retrieval.reranker import reranker
+            results = reranker.rerank_and_filter(results, expected_class=class_level, expected_subject=subject, top_k=top_k)
+        except Exception as e:
+            logger.error(f"Reranking error: {e}")
+            results = results[:top_k]
+
         latency = (time.perf_counter() - start) * 1000
         if not results:
             return None, {"match_found": False, "confidence": 0.0, "method": "faiss_semantic", "latency_ms": round(latency, 2)}, latency
@@ -395,12 +404,11 @@ def _try_faiss(query: str, top_k: int = 5) -> Tuple[Optional[str], Dict[str, Any
         return None, {"match_found": False, "confidence": 0.0, "method": "faiss_semantic", "error": str(exc)}, latency
 
 
-def retrieve_knowledge_with_trace(query: str) -> Tuple[Optional[str], Dict[str, Any]]:
+def retrieve_knowledge_with_trace(query: str, subject: Optional[str] = None, class_level: Optional[str] = None, language: Optional[str] = None, domain: Optional[str] = None, doc_type: Optional[str] = None) -> Tuple[Optional[str], Dict[str, Any]]:
     """
     Unified synchronous retrieval cascade:
     Kosha (deterministic) -> keyword index -> markdown full-text -> FAISS semantic.
     """
-    subject: Optional[str] = None
     # Detect programming intent from the query and override subject when necessary
     programming_indicators = [
         "python",
@@ -451,16 +459,20 @@ def retrieve_knowledge_with_trace(query: str) -> Tuple[Optional[str], Dict[str, 
     retrievers = (
         _try_kosha,
         _try_keyword_kb,
-        _try_markdown_search,
-        _try_faiss,
     )
 
     for retrieve_fn in retrievers:
-        # pass subject forward when supported
+        # pass subject and metadata forward when supported
         try:
-            content, trace, _latency = retrieve_fn(query, subject=subject)
+            content, trace, _latency = retrieve_fn(query, subject=subject, class_level=class_level, language=language, domain=domain, doc_type=doc_type)
         except TypeError:
-            content, trace, _latency = retrieve_fn(query)
+            try:
+                content, trace, _latency = retrieve_fn(query, subject=subject, class_level=class_level, language=language)
+            except TypeError:
+                try:
+                    content, trace, _latency = retrieve_fn(query, subject=subject)
+                except TypeError:
+                    content, trace, _latency = retrieve_fn(query)
         method = str(trace.get("method") or retrieve_fn.__name__)
         sources_consulted.append(method)
 

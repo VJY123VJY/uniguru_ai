@@ -13,7 +13,7 @@ class RAGService:
             logger.warning(f"RAG engine not available: {e}")
             self.engine = None
 
-    def search_vectorstore(self, query: str):
+    def search_vectorstore(self, query: str, class_level: str = None, subject: str = None, language: str = None, domain: str = None, doc_type: str = None, topic: str = None):
         """
         Searches the semantic vector store for relevant context.
         """
@@ -21,7 +21,7 @@ class RAGService:
             return None
 
         try:
-            result = self.engine.answer_question(query, top_k=TOP_K)
+            result = self.engine.answer_question(query, top_k=TOP_K, class_level=class_level, subject=subject, language=language, domain=domain, doc_type=doc_type, topic=topic)
             if not result or not result.get("retrieved"):
                 return None
 
@@ -31,6 +31,7 @@ class RAGService:
                 "answer": result.get("answer", ""),
                 "confidence": top_score,
                 "source": "vectorstore",
+                "retrieved": retrieved
             }
         except Exception as e:
             logger.error(f"RAG search error: {str(e)}")

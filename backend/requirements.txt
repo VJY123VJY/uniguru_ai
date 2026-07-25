@@ -8,3 +8,13 @@ sentence-transformers
 faiss-cpu
 numpy
 pandas
+beautifulsoup4
+PyMuPDF
+groq
+PyJWT
+passlib
+pytest==8.2.2
+supabase==2.5.1
+transformers==4.42.4
+selenium==4.22.0
+webdriver-manager==4.0.1

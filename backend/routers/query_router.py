@@ -14,6 +14,8 @@ class QueryRequest(BaseModel):
     query: str = Field("", description="The user question or query.")
     question: str = Field("", description="Alternative key for the user question.")
     subject: Optional[str] = Field(None, description="Optional subject/topic selection from UI (e.g., Programming)")
+    class_level: Optional[str] = Field(None, description="Target class level (e.g. '10')")
+    language: Optional[str] = Field(None, description="Language for knowledge base filter")
 
 @router.post("/ask")
 async def ask_uniguru(request: QueryRequest):
@@ -56,11 +58,28 @@ async def ask_uniguru(request: QueryRequest):
                 answer=validation["error"]
             )
 
+        # 1.5 Query Classifier
+        from services.query_classifier import query_classifier
+        classification = query_classifier.classify_query(query)
+        logger.info(f"Query Classification: {classification}")
+        
+        c_domain = classification.get("domain")
+        c_class = classification.get("class_level") or request.class_level
+        c_subject = classification.get("subject") or request.subject
+        c_topic = classification.get("topic")
+        c_intent = classification.get("intent", "general")
+
         # 2. Intent-Based Deterministic Retrieval (Ontology / unified retriever)
         logger.info("Attempting deterministic ontology retrieval...")
         from retrieval.retriever import retrieve_knowledge_with_trace
 
-        content, trace = retrieve_knowledge_with_trace(query, subject=request.subject)
+        content, trace = retrieve_knowledge_with_trace(
+            query, 
+            subject=c_subject,
+            class_level=c_class,
+            language=request.language,
+            domain=c_domain
+        )
         if content and trace.get("match_found") and float(trace.get("confidence") or 0) >= 0.30:
             logger.info("Unified retriever match with confidence %s", trace.get("confidence"))
             return response_formatter.format_response(
@@ -82,15 +101,48 @@ async def ask_uniguru(request: QueryRequest):
 
         # 3. Vector-Based Semantic Retrieval (RAG)
         logger.info("Attempting vector-based semantic retrieval...")
-        rag_res = rag_service.search_vectorstore(query)
-        if rag_res and rag_res.get("confidence", 0) >= 0.70:
-            logger.info(f"Vectorstore match found with confidence {rag_res['confidence']}")
-            return response_formatter.format_response(
-                decision="answer",
-                confidence=rag_res["confidence"],
-                source="vectorstore",
-                answer=rag_res["answer"]
-            )
+        rag_res = rag_service.search_vectorstore(
+            query, 
+            class_level=c_class, 
+            subject=c_subject, 
+            language=request.language,
+            domain=c_domain,
+            topic=c_topic
+        )
+        if rag_res and rag_res.get("confidence", 0) >= 0.75:
+            retrieved_docs = rag_res.get("retrieved", [])
+            is_valid = True
+            
+            # Retrieval Validation
+            if c_domain:
+                for doc in retrieved_docs:
+                    doc_domain = doc.get("metadata", {}).get("domain", "")
+                    if doc_domain and doc_domain.lower() != c_domain.lower():
+                        is_valid = False
+                        logger.warning(f"Validation failed: Expected domain {c_domain}, but got {doc_domain}")
+                        break
+            
+            if is_valid:
+                logger.info(f"Vectorstore match found with confidence {rag_res['confidence']}")
+                
+                # Debug Information Logging
+                print(f"\n--- RAG DEBUG INFO ---")
+                print(f"Query: {query}")
+                print(f"Detected Intent: {c_intent}")
+                print(f"Selected Knowledge Source: domain={c_domain}, class={c_class}, subject={c_subject}, topic={c_topic}")
+                print(f"Retrieved Documents: {[d.get('metadata', {}).get('file_name') for d in retrieved_docs]}")
+                print(f"Similarity Scores: {[d.get('score') for d in retrieved_docs]}")
+                print(f"Final Context sent to LLM: {len(retrieved_docs)} documents.")
+                print(f"----------------------\n")
+                
+                return response_formatter.format_response(
+                    decision="answer",
+                    confidence=rag_res["confidence"],
+                    source="vectorstore",
+                    answer=rag_res["answer"]
+                )
+            else:
+                logger.warning("Rejecting context due to retrieval validation failure.")
 
         # 4. Final Rejection (No Knowledge Found)
         logger.info("No knowledge found in ontology or vectorstore.")
