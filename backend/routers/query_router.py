@@ -34,7 +34,7 @@ async def ask_uniguru(request: QueryRequest):
                 decision="answer",
                 confidence=1.0,
                 source="none",
-                answer="Hello 👋 How can I help you today?",
+                answer="Hello! How can I help you today?",
             )
         
         # 1. Run Validation

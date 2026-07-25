@@ -52,7 +52,7 @@ def _build_engine_headers(caller: str) -> Dict[str, str]:
 
 
 def _build_greeting_response(user_msg: str, trace_id: str) -> Dict[str, Any]:
-    greeting_answer = "Hello 👋 How can I help you today?"
+    greeting_answer = "Hello! How can I help you today?"
     return {
         "decision": "answer",
         "verification_status": "VERIFIED",

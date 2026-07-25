@@ -565,7 +565,7 @@ async def _process_router_request(
         request_id = str(uuid.uuid4())
         response = {
             "decision": "direct_reply",
-            "answer": "Hello 👋 How can I help you today?",
+            "answer": "Hello! How can I help you today?",
             "session_id": session_id,
             "reason": "Direct greeting reply",
             "ontology_reference": {
@@ -595,8 +595,8 @@ async def _process_router_request(
                 "route": "ROUTE_DIRECT",
                 "router_latency_ms": 0.0,
             },
-            "suggested_question": suggested_question,
-            "suggested_answer": suggested_answer,
+            "suggested_question": None,
+            "suggested_answer": None,
         }
     else:
         response = await conversation_router.route_query(query=normalized_query, context=context_map)
