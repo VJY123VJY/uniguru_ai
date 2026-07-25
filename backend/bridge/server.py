@@ -52,36 +52,20 @@ def _build_engine_headers(caller: str) -> Dict[str, str]:
 
 
 def _build_greeting_response(user_msg: str, trace_id: str) -> Dict[str, Any]:
-    suggested_question = "Tell me about Bhagwan Swaminarayan's life."
-    suggested_answer = (
-        "Bhagwan Swaminarayan, born as Ghanshyam Pande on April 3, 1781 in Chhapaiya, was the "
-        "founder and central deity of the Swaminarayan Sampradaya. As Nilkanth Varni, he undertook "
-        "a seven-year pilgrimage across India, later became Sahajanand Swami, and is remembered for "
-        "his spiritual leadership, the divine name Swaminarayan, and major social reforms."
-    )
+    greeting_answer = "Hello 👋 How can I help you today?"
     return {
         "decision": "answer",
         "verification_status": "VERIFIED",
         "reason": "Direct greeting reply",
-        "answer": (
-            "Hello! Kuch to kaho\n\n"
-            f"Swaminarayan knowledge: {suggested_answer}\n\n"
-            f"Suggested question: {suggested_question}"
-        ),
+        "answer": greeting_answer,
         "source": "none",
         "confidence": 1.0,
         "trace_id": trace_id,
         "data": {
-            "response_content": (
-                "Hello! Kuch to kaho\n\n"
-                f"Swaminarayan knowledge: {suggested_answer}\n\n"
-                f"Suggested question: {suggested_question}"
-            )
+            "response_content": greeting_answer
         },
         "greeting": {
             "matched": user_msg,
-            "suggested_question": suggested_question,
-            "suggested_answer": suggested_answer,
         },
     }
 
