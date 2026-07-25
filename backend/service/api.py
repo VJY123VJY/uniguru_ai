@@ -704,7 +704,7 @@ async def ask(request: AskRequest, raw_request: Request) -> Dict[str, Any]:
         )
     try:
         _enforce_service_auth(raw_request)
-        response = _process_router_request(
+        response = await _process_router_request(
             query=request.query,
             context=request.context,
             allow_web=request.allow_web,
@@ -798,7 +798,7 @@ async def voice_query(
         if transcription.get("language"):
             context["language"] = transcription["language"]
 
-        response = _process_router_request(
+        response = await _process_router_request(
             query=str(transcription.get("text") or ""),
             context=context,
             allow_web=allow_web,

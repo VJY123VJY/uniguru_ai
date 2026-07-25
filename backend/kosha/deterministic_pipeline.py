@@ -114,6 +114,24 @@ def run_deterministic_pipeline(
     trace_id = trace_id or _new_trace_id(query)
     started_at = _utc_now_iso()
 
+    clean_query = (query or "").strip().strip("?!.,").lower()
+    if clean_query in {"hi", "hello", "hey", "hi there", "hello there", "good morning", "good afternoon", "good evening", "namaste"}:
+        return {
+            "trace_id": trace_id,
+            "query": query,
+            "verification_status": "VERIFIED",
+            "matched_signals": [],
+            "rejected_signals": [],
+            "reasoning_path": ["greeting_handler", "direct_greeting"],
+            "confidence_breakdown": {"overall": 1.0, "reason": "Direct greeting match."},
+            "knowledge_ids_used": [],
+            "domain_resolution": {"domain": "greeting", "method": "direct_greeting"},
+            "synthesis_mode": "DIRECT_GREETING",
+            "answer": "Hello! How can I help you today?",
+            "fallback_to_llm": False,
+            "generated_at": started_at,
+        }
+
     # Phase 1: Load Kosha entries
     loader = KoshaLoader(data_sources=[str(_KOSHA_DIR)])
     raw_entries = loader.load_all()
