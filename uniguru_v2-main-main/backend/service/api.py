@@ -102,6 +102,7 @@ _default_cors_origins = [
     "http://localhost:5174",
     "http://127.0.0.1:5173",
     "http://127.0.0.1:5174",
+    "https://uniguru-ai-2.onrender.com",
     "https://uniguru-ai-3.onrender.com",
     "https://uni-guru.in",
     "https://www.uni-guru.in",
