@@ -236,8 +236,29 @@ jobs:
             echo "| $(date -u +'%Y-%m-%d %H:%M:%S UTC') | ${{ needs.build.outputs.sha_short }} | SUCCESS | Stable deployment |" >> docs/RELEASE_HISTORY.md
           EOF
 
-      - name: Automatic Rollback on Failure
-        if: failure()
+      - name: Save persistent Release History
+        if: always()
+        run: |
+          sshpass -p "${{ secrets.VM_PASSWORD }}" ssh -p ${{ secrets.VM_PORT }} -o StrictHostKeyChecking=no ${{ secrets.VM_USERNAME }}@${{ secrets.VM_IP }} "bash -s" << 'EOF'
+            set -euo pipefail
+            cd ~/UNIGURU
+            if [ -f docs/RELEASE_HISTORY.md ]; then
+              mkdir -p /var/tmp/UNIGURU
+              cp docs/RELEASE_HISTORY.md /var/tmp/UNIGURU/RELEASE_HISTORY.md
+            fi
+          EOF
+
+  rollback:
+    name: Rollback on deployment failure
+    needs: [build, deploy]
+    if: always() && needs.deploy.result == 'failure'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Install sshpass
+        run: |
+          sudo apt-get update && sudo apt-get install -y sshpass
+
+      - name: Execute Rollback on VM
         run: |
           sshpass -p "${{ secrets.VM_PASSWORD }}" ssh -p ${{ secrets.VM_PORT }} -o StrictHostKeyChecking=no ${{ secrets.VM_USERNAME }}@${{ secrets.VM_IP }} "bash -s" << 'EOF'
             set -euo pipefail
@@ -292,23 +313,31 @@ jobs:
                 fi
                 
                 API_HEALTH=0
-                curl -sf http://localhost:8000/health > /dev/null && API_HEALTH=1
+                curl -sf http://163.128.209.18:8007/health > /dev/null && API_HEALTH=1
                 
                 BRIDGE_HEALTH=0
-                curl -sf http://localhost:8002/health > /dev/null && BRIDGE_HEALTH=1
+                curl -sf http://163.128.209.18:8009/health > /dev/null && BRIDGE_HEALTH=1
                 
                 FRONTEND_HEALTH=0
-                curl -sf http://localhost:3005 > /dev/null && FRONTEND_HEALTH=1
+                curl -sf http://163.128.209.18:3006 > /dev/null && FRONTEND_HEALTH=1
                 
                 if [ "$UNHEALTHY_COUNT" -eq 0 ] && [ "$STARTING_COUNT" -eq 0 ] && [ "$API_HEALTH" -eq 1 ] && [ "$BRIDGE_HEALTH" -eq 1 ] && [ "$FRONTEND_HEALTH" -eq 1 ]; then
                   echo "Rollback deployment is healthy!"
                   echo "| $(date -u +'%Y-%m-%d %H:%M:%S UTC') | $LAST_HEALTHY_TAG | ROLLBACK_SUCCESS | Rollback from failed ${{ needs.build.outputs.sha_short }} is healthy |" >> docs/RELEASE_HISTORY.md
+                  
+                  # Save persistent Release History
+                  mkdir -p /var/tmp/UNIGURU
+                  cp docs/RELEASE_HISTORY.md /var/tmp/UNIGURU/RELEASE_HISTORY.md
                   exit 0
                 fi
                 
                 if [ "$i" -eq 12 ]; then
                   echo "Rollback health check failed!"
                   echo "| $(date -u +'%Y-%m-%d %H:%M:%S UTC') | $LAST_HEALTHY_TAG | ROLLBACK_FAILED | Rollback from failed ${{ needs.build.outputs.sha_short }} failed health check |" >> docs/RELEASE_HISTORY.md
+                  
+                  # Save persistent Release History
+                  mkdir -p /var/tmp/UNIGURU
+                  cp docs/RELEASE_HISTORY.md /var/tmp/UNIGURU/RELEASE_HISTORY.md
                   exit 1
                 fi
                 
@@ -325,18 +354,11 @@ jobs:
                 echo "|---|---|---|---|" >> docs/RELEASE_HISTORY.md
               fi
               echo "| $(date -u +'%Y-%m-%d %H:%M:%S UTC') | ${{ needs.build.outputs.sha_short }} | FAILED | Deployment failed and no rollback tag was available |" >> docs/RELEASE_HISTORY.md
+              
+              # Save persistent Release History
+              mkdir -p /var/tmp/UNIGURU
+              cp docs/RELEASE_HISTORY.md /var/tmp/UNIGURU/RELEASE_HISTORY.md
               exit 1
             fi
           EOF
 
-      - name: Save persistent Release History
-        if: always()
-        run: |
-          sshpass -p "${{ secrets.VM_PASSWORD }}" ssh -p ${{ secrets.VM_PORT }} -o StrictHostKeyChecking=no ${{ secrets.VM_USERNAME }}@${{ secrets.VM_IP }} "bash -s" << 'EOF'
-            set -euo pipefail
-            cd ~/UNIGURU
-            if [ -f docs/RELEASE_HISTORY.md ]; then
-              mkdir -p /var/tmp/UNIGURU
-              cp docs/RELEASE_HISTORY.md /var/tmp/UNIGURU/RELEASE_HISTORY.md
-            fi
-          EOF
