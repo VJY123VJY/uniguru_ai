@@ -33,7 +33,6 @@ RUN pip install --no-cache-dir --upgrade pip && \
 
 COPY . /app
 
-EXPOSE 8000
+EXPOSE 8002
 
-CMD ["sh", "-c", "uvicorn service.api:app --host ${UNIGURU_HOST:-0.0.0.0} --port ${UNIGURU_PORT:-8000} --workers ${UNIGURU_WORKERS:-2}"]
-
+CMD ["sh", "-c", "uvicorn bridge.server:app --host 0.0.0.0 --port 8002"]
