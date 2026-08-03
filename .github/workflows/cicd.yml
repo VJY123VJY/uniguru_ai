@@ -189,13 +189,13 @@ jobs:
               fi
               
               API_HEALTH=0
-              curl -sf http://163.128.209.18:8007/health > /dev/null && API_HEALTH=1
+              if curl -sf http://163.128.209.18:8007/health > /dev/null; then API_HEALTH=1; fi
               
               BRIDGE_HEALTH=0
-              curl -sf http://163.128.209.18:8009/health > /dev/null && BRIDGE_HEALTH=1
+              if curl -sf http://163.128.209.18:8009/health > /dev/null; then BRIDGE_HEALTH=1; fi
               
               FRONTEND_HEALTH=0
-              curl -sf http://163.128.209.18:3006 > /dev/null && FRONTEND_HEALTH=1
+              if curl -sf http://163.128.209.18:3006 > /dev/null; then FRONTEND_HEALTH=1; fi
               
               if [ "$UNHEALTHY_COUNT" -eq 0 ] && [ "$STARTING_COUNT" -eq 0 ] && [ "$API_HEALTH" -eq 1 ] && [ "$BRIDGE_HEALTH" -eq 1 ] && [ "$FRONTEND_HEALTH" -eq 1 ]; then
                 echo "All containers, API, Bridge, and Frontend endpoints are healthy!"
@@ -313,13 +313,13 @@ jobs:
                 fi
                 
                 API_HEALTH=0
-                curl -sf http://163.128.209.18:8007/health > /dev/null && API_HEALTH=1
+                if curl -sf http://163.128.209.18:8007/health > /dev/null; then API_HEALTH=1; fi
                 
                 BRIDGE_HEALTH=0
-                curl -sf http://163.128.209.18:8009/health > /dev/null && BRIDGE_HEALTH=1
+                if curl -sf http://163.128.209.18:8009/health > /dev/null; then BRIDGE_HEALTH=1; fi
                 
                 FRONTEND_HEALTH=0
-                curl -sf http://163.128.209.18:3006 > /dev/null && FRONTEND_HEALTH=1
+                if curl -sf http://163.128.209.18:3006 > /dev/null; then FRONTEND_HEALTH=1; fi
                 
                 if [ "$UNHEALTHY_COUNT" -eq 0 ] && [ "$STARTING_COUNT" -eq 0 ] && [ "$API_HEALTH" -eq 1 ] && [ "$BRIDGE_HEALTH" -eq 1 ] && [ "$FRONTEND_HEALTH" -eq 1 ]; then
                   echo "Rollback deployment is healthy!"
