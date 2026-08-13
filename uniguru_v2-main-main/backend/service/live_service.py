@@ -10,7 +10,7 @@ from backend.reasoning.concept_resolver import ConceptResolver
 from backend.reasoning.graph_reasoner import GraphReasoner
 from backend.reasoning.reasoning_trace import ReasoningTraceGenerator
 from backend.retrieval.web_retriever import web_retrieve
-
+from learning_runtime.capability.curriculum_intelligence import execute_curriculum_query
 
 UNVERIFIED_MESSAGE = "Information retrieved but not verified. I cannot verify this information from current knowledge."
 UNKNOWN_MESSAGE = "I do not have verified knowledge to answer this question."
@@ -38,6 +38,60 @@ class LiveUniGuruService:
         metadata["session_id"] = session_id
         metadata["allow_web_retrieval"] = allow_web_retrieval
 
+        curriculum_capability = self._execute_curriculum_capability(
+            query=user_query,
+            student_id=session_id,
+            context=metadata,
+        )
+
+        if curriculum_capability is not None:
+            capability_result = curriculum_capability.get("result") or {}
+
+            if capability_result.get("blocked"):
+                return {
+                    "decision": "block",
+                    "answer": None,
+                    "session_id": session_id,
+                    "reason": capability_result.get(
+                        "block_reason",
+                        "Curriculum capability blocked execution.",
+                    ),
+                    "verification_status": "BLOCKED",
+                    "status_action": "BLOCK",
+                    "curriculum_capability": curriculum_capability,
+                }
+
+            if capability_result.get("convergence_validated"):
+                return {
+                    "decision": "answer",
+                    "answer": (
+                        capability_result
+                        .get("curriculum_intelligence", {})
+                        .get("definition")
+                    ),
+                    "session_id": session_id,
+                    "reason": "TANTRA Curriculum Intelligence capability verified.",
+                    "verification_status": capability_result.get(
+                        "verification_status",
+                        "VERIFIED",
+                    ),
+                    "curriculum_capability": curriculum_capability,
+                    "evidence": capability_result.get("runtime_evidence"),
+                    "reasoning_trace": {
+                        "sources_consulted": [
+                            "tantra.curriculum_intelligence",
+                            "canonical_dataset",
+                            "evidence_first_retrieval",
+                        ],
+                        "retrieval_confidence": (
+                            capability_result.get("retrieval", {})
+                            .get("confidence", 0.0)
+                        ),
+                        "verification_status": capability_result.get(
+                            "verification_status"
+                        ),
+                    },
+                }
         decision = self.engine.evaluate(
             content=user_query,
             metadata=metadata,
@@ -54,7 +108,33 @@ class LiveUniGuruService:
         self._apply_output_governance(decision)
         sealed = self.enforcement.validate_and_bind(decision)
         return self._build_contract_response(sealed, session_id=session_id)
+    def _execute_curriculum_capability(
+        self,
+        query: str,
+        student_id: Optional[str],
+        context: Dict[str, Any],
+    ) -> Optional[Dict[str, Any]]:
+        """
+        Execute the reusable TANTRA Curriculum Intelligence capability.
 
+        This is an integration adapter only:
+        - no curriculum logic is implemented here
+        - no retrieval logic is implemented here
+        - canonical runtime remains the source of truth
+        """
+        if not context.get("curriculum_capability"):
+            return None
+
+        result = execute_curriculum_query(
+            query=query,
+            student_id=student_id or "ANONYMOUS",
+            grade=context.get("grade"),
+            medium=context.get("medium"),
+            subject=context.get("subject"),
+        )
+
+        return result
+    
     def _resolve_unknown(self, decision: Dict[str, Any]) -> Dict[str, Any]:
         data = decision.setdefault("data", {})
         decision["decision"] = "block"

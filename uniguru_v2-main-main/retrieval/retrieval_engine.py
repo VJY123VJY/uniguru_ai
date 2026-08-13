@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+import os
 import re
 import sys
 import importlib.util
@@ -18,6 +19,14 @@ from backend.memory.constitutional_semantic_memory import stable_hash
 MASTERDB_PATH = ROOT / "masterdb" / "balbharti" / "canonical_dataset.json"
 EVIDENCE_FIRST_RETRIEVAL_PATH = ROOT / "retrieval" / "evidence_first_retrieval.py"
 
+# Deterministic retrieval acceptance gates.
+# Both conditions must pass before a curriculum record is considered relevant.
+MIN_SEMANTIC_OVERLAP = float(
+    os.getenv("UNIGURU_MIN_SEMANTIC_OVERLAP", "0.35")
+)
+MIN_ACCEPTANCE_SCORE = float(
+    os.getenv("UNIGURU_MIN_ACCEPTANCE_SCORE", "0.45")
+)
 
 def _load_evidence_builder():
     spec = importlib.util.spec_from_file_location(
@@ -38,19 +47,54 @@ build_evidence_handle = _load_evidence_builder()
 def _normalize(text: str) -> str:
     return re.sub(r"[^a-z0-9]+", " ", str(text or "").lower()).strip()
 
+STOPWORDS = {
+    "a",
+    "an",
+    "the",
+    "is",
+    "are",
+    "was",
+    "were",
+    "what",
+    "which",
+    "who",
+    "when",
+    "where",
+    "why",
+    "how",
+    "explain",
+    "tell",
+    "about",
+    "for",
+    "to",
+    "in",
+    "on",
+    "of",
+    "and",
+    "or",
+    "me",
+    "please",
+    "can",
+    "could",
+    "would",
+    "should",
+}
 
 def _tokens(text: str) -> set:
     tokens: set = set()
+
     for token in _normalize(text).split():
-        if not token:
+        if not token or token in STOPWORDS:
             continue
+
         tokens.add(token)
+
         if token.endswith("ies") and len(token) > 3:
             tokens.add(f"{token[:-3]}y")
         elif token.endswith("s") and len(token) > 3:
             tokens.add(token[:-1])
-    return tokens
 
+    return tokens
 
 def load_masterdb_records() -> List[Dict[str, Any]]:
     if not MASTERDB_PATH.exists():
@@ -67,11 +111,11 @@ def _score_record(
     subject: Optional[str] = None,
 ) -> float:
     query_tokens = _tokens(query)
+
     if not query_tokens:
         return 0.0
 
     fields = [
-        record.get("subject"),
         record.get("chapter"),
         record.get("concept"),
         record.get("definition"),
@@ -79,26 +123,50 @@ def _score_record(
         " ".join(record.get("examples") or []),
         " ".join(record.get("questions") or []),
     ]
-    record_tokens = _tokens(" ".join(str(field or "") for field in fields))
+
+    record_tokens = _tokens(
+        " ".join(str(field or "") for field in fields)
+    )
+
     overlap = len(query_tokens & record_tokens) / max(len(query_tokens), 1)
 
-    score = overlap
-    if record.get("chapter") and _normalize(record.get("chapter")) in _normalize(query):
-        score += 0.15
-    if record.get("concept") and _normalize(record.get("concept")) in _normalize(query):
-        score += 0.2
-    if grade is not None and int(record.get("grade") or 0) == grade:
-        score += 0.18
-    if medium and str(record.get("medium") or "").lower() == str(medium).lower():
-        score += 0.12
-    if subject and str(record.get("subject") or "").lower() == str(subject).lower():
-        score += 0.22
-    if record.get("difficulty") == "easy" and "easy" in query.lower():
-        score += 0.04
-    if record.get("difficulty") == "hard" and "hard" in query.lower():
-        score += 0.04
+    concept_match = bool(
+        record.get("concept")
+        and _normalize(record.get("concept")) in _normalize(query)
+    )
 
-    return round(score, 4)
+    chapter_match = bool(
+        record.get("chapter")
+        and _normalize(record.get("chapter")) in _normalize(query)
+    )
+
+    # Semantic relevance is the primary signal.
+    score = overlap
+
+    if chapter_match:
+        score += 0.15
+
+    if concept_match:
+        score += 0.20
+
+    # Metadata is compatibility only.
+    # It must never dominate semantic relevance.
+    if grade is not None and int(record.get("grade") or 0) == int(grade):
+        score += 0.05
+
+    if medium and str(record.get("medium") or "").lower() == str(medium).lower():
+        score += 0.03
+
+    if subject and str(record.get("subject") or "").lower() == str(subject).lower():
+        score += 0.05
+
+    if record.get("difficulty") == "easy" and "easy" in query.lower():
+        score += 0.02
+
+    if record.get("difficulty") == "hard" and "hard" in query.lower():
+        score += 0.02
+
+    return round(min(score, 1.0), 4)
 
 
 def _related_score(record: Dict[str, Any], reference: Dict[str, Any]) -> float:
@@ -183,6 +251,53 @@ def build_curriculum_graph(records: List[Dict[str, Any]]) -> Dict[str, Any]:
 
     return {"nodes": nodes, "edges": edges}
 
+def _is_relevant_match(
+    query: str,
+    record: Dict[str, Any],
+    score: float,
+) -> bool:
+    query_tokens = _tokens(query)
+
+    if not query_tokens:
+        return False
+
+    semantic_fields = [
+        record.get("chapter"),
+        record.get("concept"),
+        record.get("definition"),
+        record.get("learning_outcome"),
+        " ".join(record.get("examples") or []),
+        " ".join(record.get("questions") or []),
+    ]
+
+    record_tokens = _tokens(
+        " ".join(str(field or "") for field in semantic_fields)
+    )
+
+    semantic_overlap = (
+        len(query_tokens & record_tokens)
+        / max(len(query_tokens), 1)
+    )
+
+    concept_match = bool(
+        record.get("concept")
+        and _normalize(record.get("concept")) in _normalize(query)
+    )
+
+    chapter_match = bool(
+        record.get("chapter")
+        and _normalize(record.get("chapter")) in _normalize(query)
+    )
+
+    # Explicit concept/chapter matches are strong evidence.
+    if concept_match or chapter_match:
+        return score >= 0.35
+
+    # Otherwise require meaningful semantic overlap.
+    return (
+        semantic_overlap >= MIN_SEMANTIC_OVERLAP
+        and score >= MIN_ACCEPTANCE_SCORE
+    )
 
 def find_top_matches(
     query: str,
@@ -209,7 +324,15 @@ def find_top_matches(
         }
         for record in candidate_records
     ]
-    scored = [row for row in scored if row["score"] > 0.0]
+    scored = [
+    row
+    for row in scored
+    if _is_relevant_match(
+        query=query,
+        record=row["record"],
+        score=row["score"],
+    )
+]
     scored.sort(key=lambda row: row["score"], reverse=True)
     matches = scored[:max_results]
     best_record = matches[0]["record"] if matches else None

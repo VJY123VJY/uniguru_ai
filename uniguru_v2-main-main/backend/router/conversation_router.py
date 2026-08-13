@@ -5,6 +5,7 @@ import os
 import re
 import threading
 import time
+from urllib import response
 import uuid
 import requests
 from dataclasses import dataclass
@@ -50,12 +51,13 @@ _WORKFLOW_PATTERNS = (
     r"\bschedule\b.*\b(call|meeting|job|workflow|task)\b",
     r"\bstart\b.*\bworkflow\b",
     r"\btrigger\b.*\bworkflow\b",
+    r"\b(create|make|build|plan|design)\b.*\b(study plan|learning plan|study schedule)\b",
 )
-
 _TOOL_PATTERNS = (
     r"\buse\b.*\btool\b",
+    r"\busing\b.*\btool\b",
     r"\binvoke\b.*\bapi\b",
-    r"\bexecute\b.*\bscript\b",
+    r"\bexecute\b.*\b(script|sql|query|tool)\b",
     r"\brun\b.*\b(sql|query|tool)\b",
 )
 
@@ -231,7 +233,11 @@ class ConversationRouter:
         legacy_type = classify_query(query)
         effective_allow_web = allow_web or legacy_type == QueryType.WEB_LOOKUP
 
-        if self._breaker.should_fallback():
+        runtime_context = dict(context or {})
+        runtime_context["curriculum_capability"] = True
+
+        # Knowledge queries must always use the canonical evidence path.
+        if self._breaker.should_fallback() and query_type != QueryRoutingType.KNOWLEDGE_QUERY:
             return self._build_llm_response(
                 query=query,
                 query_type=query_type,
@@ -240,24 +246,62 @@ class ConversationRouter:
             )
 
         started = time.perf_counter()
+
         try:
             response = self._service.ask(
                 user_query=query,
                 session_id=session_id,
-                context=context,
+                context=runtime_context,
                 allow_web_retrieval=effective_allow_web,
             )
         except Exception as exc:
+            if query_type == QueryRoutingType.KNOWLEDGE_QUERY:
+                return self._build_router_contract_response(
+                    decision="block",
+                    answer=None,
+                    reason=f"Canonical UniGuru runtime failed: {exc}",
+                    query_type=query_type,
+                    route=RouteTarget.ROUTE_UNIGURU,
+                    verification_status="BLOCKED",
+                    session_id=session_id,
+                    governance_allowed=False,
+                    governance_reason="Canonical evidence/governance path failed.",
+                )
+
             return self._build_llm_response(
                 query=query,
                 query_type=query_type,
                 session_id=session_id,
                 warning=f"UniGuru KB path failed ({exc}). Falling back to conversational mode.",
             )
+
         latency_ms = (time.perf_counter() - started) * 1000
         self._breaker.record_latency(latency_ms)
 
+        response_decision = str(response.get("decision") or "").lower()
+        verification_status = str(
+            response.get("verification_status") or "UNVERIFIED"
+        ).upper()
+
+        # Never override a canonical block.
+        if response_decision == "block" or verification_status == "BLOCKED":
+            return response
+
+        # A knowledge response must contain an answer.
         if not str(response.get("answer") or "").strip():
+            if query_type == QueryRoutingType.KNOWLEDGE_QUERY:
+                return self._build_router_contract_response(
+                    decision="block",
+                    answer=None,
+                    reason="Canonical UniGuru response was empty.",
+                    query_type=query_type,
+                    route=RouteTarget.ROUTE_UNIGURU,
+                    verification_status="BLOCKED",
+                    session_id=session_id,
+                    governance_allowed=False,
+                    governance_reason="Empty canonical evidence-backed response.",
+                )
+
             return self._build_llm_response(
                 query=query,
                 query_type=query_type,
@@ -265,7 +309,15 @@ class ConversationRouter:
                 warning="UniGuru KB response was empty. Falling back to conversational mode.",
             )
 
-        verification_status = str(response.get("verification_status") or "UNVERIFIED").upper()
+        # VERIFIED canonical responses pass through unchanged.
+        if verification_status == "VERIFIED":
+            return response
+
+        # Knowledge queries never silently downgrade to LLM.
+        if query_type == QueryRoutingType.KNOWLEDGE_QUERY:
+            return response
+
+        # Non-knowledge unverified responses may use the configured fallback.
         if verification_status == "UNVERIFIED" and self._allow_unverified_fallback:
             return self._build_llm_response(
                 query=query,
@@ -273,6 +325,7 @@ class ConversationRouter:
                 session_id=session_id,
                 warning="UniGuru could not verify this query. This is an LLM fallback response.",
             )
+
         return response
 
     def _build_system_block_response(
