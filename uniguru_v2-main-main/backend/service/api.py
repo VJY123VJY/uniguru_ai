@@ -299,8 +299,18 @@ def _ensure_non_empty_answer(
             reason="Router returned an invalid payload; safe fallback engaged.",
             caller=caller,
         )
+
+    # A governed block/refusal is a valid terminal response.
+    # Do not convert it into an LLM fallback merely because answer is null.
+    decision = str(response.get("decision") or "").strip().lower()
+    status_action = str(response.get("status_action") or "").strip().upper()
+
+    if decision in {"block", "blocked"} or status_action in {"BLOCK", "REFUSE"}:
+        return response
+
     if str(response.get("answer") or "").strip():
         return response
+
     return _build_safe_fallback_response(
         query=query,
         session_id=session_id,
@@ -745,15 +755,25 @@ def ask(request: AskRequest, raw_request: Request) -> Dict[str, Any]:
             session_id=request.session_id,
             raw_request=raw_request,
         )
-        # Final output-layer safety: always ensure non-empty "answer" while preserving existing fields.
+       # Final output-layer safety: preserve governed terminal responses.
         if not isinstance(response, dict):
             return _build_safe_fallback_response(
                 query=request.query,
                 session_id=request.session_id,
                 reason="/ask recovered from invalid response payload type.",
             )
+
+        decision = str(response.get("decision") or "").strip().lower()
+        status_action = str(response.get("status_action") or "").strip().upper()
+        # A governed block/refusal is a valid terminal response.
+        # Never inject an LLM/demo answer into a blocked response.
+
+        if decision in {"block", "blocked"} or status_action in {"BLOCK", "REFUSE"}:
+            return response
+
         if not str(response.get("answer") or "").strip():
             response["answer"] = SAFE_FALLBACK_PREFIX
+
         return response
     except HTTPException as exc:
         return _build_safe_fallback_response(
