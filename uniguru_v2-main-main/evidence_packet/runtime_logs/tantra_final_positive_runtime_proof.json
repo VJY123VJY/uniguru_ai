@@ -1,0 +1,139 @@
+{
+  "evidence_type": "TANTRA_FINAL_POSITIVE_RUNTIME_PROOF",
+  "captured_at": "2026-08-18T09:23:23.056640+00:00",
+  "query": "What is counting?",
+  "student_id": "TANTRA_FINAL_POSITIVE_001",
+  "schema_version": "UNIGURU_CANONICAL_RUNTIME_V2",
+  "verification_status": "VERIFIED",
+  "convergence_validated": true,
+  "evidence_id": "8de6f3f5-c9ca-5337-86c7-f2fff523bd51",
+  "textbook_id": "BALBHARTI_MATH_G1_MM",
+  "edition": "2023",
+  "chapter": "Counting from 1 to 10",
+  "section": "Number Recognition (1-5)",
+  "page_numbers": [
+    3
+  ],
+  "source_hash": "cceb25133efd4ac110223f732aabbdd3817b522178cd437da31ba279da0781cf",
+  "retrieval_hash": "76b0438339f414392eeab2530a348a6893e9bb19726bc5fd9f6f0952336826d1",
+  "lineage_hash": "ca3be02d69ed9de302a8903cbce396d07e93f3454ca95210670ee18bb3b22d39",
+  "retrieval": {
+    "matched": true,
+    "confidence": 1.0,
+    "matched_record_id": "BALBHARTI_MATH_G1_MM_CONCEPT_001",
+    "chapter": "Counting from 1 to 10",
+    "subject": "Mathematics"
+  },
+  "curriculum_intelligence": {
+    "concept": "Number Recognition",
+    "chapter": "Counting from 1 to 10",
+    "subject": "Mathematics",
+    "definition": "The ability to identify and recognize numerical symbols 1 to 5.",
+    "learning_outcome": "Students can identify and write numbers 1 to 5.",
+    "source_lineage": {
+      "publisher": "Maharashtra State Board of Education (Balbharti)",
+      "board": "Maharashtra State Board",
+      "edition": "2023",
+      "isbn": "978-81-7657-001-2",
+      "subject": "Mathematics",
+      "grade": 1,
+      "medium": "Marathi Medium",
+      "chapter": "Counting from 1 to 10",
+      "section": "Number Recognition (1-5)",
+      "page": 3,
+      "source_hash": "cceb25133efd4ac110223f732aabbdd3817b522178cd437da31ba279da0781cf",
+      "authority_signature": "819cb44a83f0ca22dbdee4a21776f62d5cc98952aee3663d05127f33a13b7c17",
+      "verification_timestamp": "2026-06-15T12:00:00+05:30",
+      "provenance_status": "VERIFIED",
+      "source_type": "Official Textbook",
+      "ingestion_method": "Verified Textbook Ingestion"
+    },
+    "curriculum_version": "balbharti-2023",
+    "matched_record_id": "BALBHARTI_MATH_G1_MM_CONCEPT_001",
+    "provenance_status": "VERIFIED",
+    "evidence": {
+      "evidence_id": "8de6f3f5-c9ca-5337-86c7-f2fff523bd51",
+      "textbook_id": "BALBHARTI_MATH_G1_MM",
+      "edition": "2023",
+      "chapter": "Counting from 1 to 10",
+      "section": "Number Recognition (1-5)",
+      "page_numbers": [
+        3
+      ],
+      "source_hash": "cceb25133efd4ac110223f732aabbdd3817b522178cd437da31ba279da0781cf",
+      "retrieval_hash": "76b0438339f414392eeab2530a348a6893e9bb19726bc5fd9f6f0952336826d1",
+      "lineage_hash": "ca3be02d69ed9de302a8903cbce396d07e93f3454ca95210670ee18bb3b22d39",
+      "verification_status": "VERIFIED",
+      "verification": {
+        "authority_status": "VERIFIED_AUTHORITY",
+        "signature": "819cb44a83f0ca22dbdee4a21776f62d5cc98952aee3663d05127f33a13b7c17",
+        "timestamp": "2026-06-15T12:00:00+05:30"
+      },
+      "lineage": {
+        "textbook_id": "BALBHARTI_MATH_G1_MM",
+        "edition": "2023",
+        "chapter": "Counting from 1 to 10",
+        "section": "Number Recognition (1-5)",
+        "lineage_hash": "ca3be02d69ed9de302a8903cbce396d07e93f3454ca95210670ee18bb3b22d39"
+      },
+      "page": {
+        "page_number": 3,
+        "content_hash": "cceb25133efd4ac110223f732aabbdd3817b522178cd437da31ba279da0781cf",
+        "ocr_status": "VERIFIED"
+      },
+      "authority": {
+        "publisher": "Maharashtra State Board of Education (Balbharti)",
+        "board": "Maharashtra State Board",
+        "isbn": "978-81-7657-001-2",
+        "authority_signature": "819cb44a83f0ca22dbdee4a21776f62d5cc98952aee3663d05127f33a13b7c17"
+      }
+    }
+  },
+  "constitutional_runtime": {
+    "active": true,
+    "decision": "forward",
+    "enforced": true
+  },
+  "pipeline_trace": [
+    {
+      "stage": "retrieval",
+      "matched": true,
+      "confidence": 1.0,
+      "latency_ms": 6.34
+    },
+    {
+      "stage": "curriculum_intelligence",
+      "concept_resolved": true,
+      "lineage_present": true,
+      "latency_ms": 0.0
+    },
+    {
+      "stage": "learning_intelligence",
+      "gap_detected": true,
+      "path_generated": true,
+      "latency_ms": 0.08
+    },
+    {
+      "stage": "mastery_intelligence",
+      "mastery_score": 0.0,
+      "weak_areas_count": 0,
+      "latency_ms": 0.31
+    },
+    {
+      "stage": "constitutional_runtime",
+      "available": true,
+      "decision": "forward",
+      "latency_ms": 11.08
+    }
+  ],
+  "pipeline_stages": [
+    "StudentQuery",
+    "Retrieval",
+    "CurriculumIntelligence",
+    "LearningIntelligence",
+    "MasteryIntelligence",
+    "ConstitutionalRuntime",
+    "RuntimeContract"
+  ],
+  "total_latency_ms": 17.84
+}

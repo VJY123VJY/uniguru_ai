@@ -1,0 +1,31 @@
+﻿{
+  "evidence_type": "TANTRA_RUNTIME_HEALTH_API_SAMPLE",
+  "validated_at": "2026-08-18",
+  "endpoints": {
+    "/health": {
+      "status": "ok",
+      "service": "uniguru-live-reasoning",
+      "version": "1.1.0",
+      "checks": {
+        "ontology_registry": "ok",
+        "reasoning_service": "ok",
+        "router_active": true,
+        "kb_loaded": true,
+        "llm_available": true
+      }
+    },
+    "/ready": {
+      "status": "ready",
+      "service": "uniguru-live-reasoning",
+      "checks": {
+        "system_running": true,
+        "kb_loaded": true,
+        "router_active": true,
+        "llm_status": "available"
+      }
+    },
+    "/health/live": {
+      "status": "alive"
+    }
+  }
+}
