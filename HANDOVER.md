@@ -8,57 +8,53 @@ Capability:
 
 tantra.curriculum_intelligence
 
-The implementation uses the existing UniGuru runtime and canonical execution boundary.
+Version:
+
+1.0.0
+
+Schema:
+
+TANTRA_CURRICULUM_INTELLIGENCE_CAPABILITY_V1
+
+Provider:
+
+TANTRA
+
+Consumer:
+
+UniGuru
 
 ## 2. Owner
 
 Sanskar
 
-## 3. Capability ID
+## 3. Current Status
 
-tantra.curriculum_intelligence
+ENGINEERING COMPLETE - EXTERNAL VALIDATION PENDING
 
-## 4. Current Status
+The implementation, integration, automated validation, CI validation, documentation and evidence package are complete.
 
-Engineering status:
+## 4. What Was Delivered
 
-VALIDATED FOR CURRENT RUNTIME SCOPE
-
-Convergence status:
-
-VALIDATED FOR CURRENT RUNTIME SCOPE
-
-This status does not constitute production deployment approval or observer approval.
-
-## 5. What Was Delivered
-
-The validated implementation includes:
-
-- TANTRA capability registration
-- deterministic capability metadata
-- canonical curriculum runtime
-- evidence-first retrieval
-- curriculum intelligence
+- TANTRA Curriculum Intelligence capability
+- deterministic canonical runtime execution
+- evidence-first curriculum retrieval
 - provenance and lineage
+- curriculum intelligence
 - learning intelligence integration
 - mastery intelligence integration
 - constitutional runtime integration
-- runtime contract completion
-- unsupported curriculum safety gate
+- RuntimeContract completion
+- unsupported-evidence safety gate
 - UniGuru HTTP integration
-- runtime health validation
-- automated tests
-- GitHub Actions CI
-- positive runtime evidence
-- negative runtime evidence
-- deployment artifacts
-- DEP documentation
-- Evidence Packet
-- reviewer screenshots
+- health/readiness/liveness validation
+- automated test validation
+- GitHub Actions CI validation
+- DEP package
+- evidence packet
+- deployment-readiness artifacts
 
-## 6. Runtime Architecture
-
-Validated runtime:
+## 5. Runtime Architecture
 
 Student Query
 ->
@@ -80,34 +76,37 @@ Constitutional Runtime
 ->
 Runtime Contract
 
-## 7. Integration Point
-
-Canonical execution surface:
+Canonical runtime:
 
 learning_runtime.canonical_runtime.execute_query
 
-Capability metadata:
+## 6. Integration Point
 
-Capability ID: tantra.curriculum_intelligence
-Version: 1.0.0
-Schema: TANTRA_CURRICULUM_INTELLIGENCE_CAPABILITY_V1
-Provider: TANTRA
-Consumer: UniGuru
-Execution mode: deterministic
-Evidence required: true
-Replay safe: true
+The capability is attached to the existing UniGuru runtime.
 
-## 8. Evidence
+No duplicate product-specific TANTRA implementation was introduced.
 
-### Positive Evidence
+## 7. Validation Evidence
 
-Artifact:
+### Automated Tests
 
-review_packets/proof_logs/tantra_final_positive_runtime_proof.json
+python -m pytest -q
+
+Result:
+
+18 passed
+
+### Capability Metadata
+
+Result:
+
+PASS
+
+### Positive Runtime
 
 Query:
 
-What is counting?
+"What is counting?"
 
 Result:
 
@@ -117,214 +116,123 @@ Convergence:
 
 true
 
-Canonical textbook:
+Retrieval:
 
-BALBHARTI_MATH_G1_MM
-
-Chapter:
-
-Counting from 1 to 10
-
-Section:
-
-Number Recognition (1-5)
-
-Page:
-
-3
+matched = true
 
 Retrieval confidence:
 
 1.0
 
-### Negative Evidence
+Evidence, source hash, retrieval hash and lineage hash were present.
 
-Artifact:
-
-review_packets/proof_logs/tantra_final_negative_runtime_proof.json
+### Negative Safety Runtime
 
 Query:
 
-Explain quantum teleportation using a fictional Balbharti chapter that does not exist
+"Explain quantum teleportation using a fictional Balbharti chapter that does not exist"
 
 Result:
 
 BLOCKED
 
-Blocked:
-
-true
-
 Convergence:
 
 false
 
-Reason:
+Evidence:
 
-[SAFETY_GATE] Evidence failure: no canonical retrieval match. Refusing execution.
+not returned
 
-## 9. Test Results
+Retrieval:
 
-Local command:
+not returned
 
-python -m pytest -q
+Safety gate:
 
-Result:
+triggered
 
-18 passed
+## 8. CI Validation
 
-Additional validation covered:
-
-- capability metadata
-- positive runtime
-- negative safety gate
-- evidence requirements
-- convergence
-
-## 10. CI Validation
-
-Workflow:
+GitHub Actions TANTRA runtime validation is present at:
 
 .github/workflows/tantra-runtime-ci.yml
 
 The workflow validates:
 
-- dependency installation
-- test suite
+- automated tests
 - capability metadata
 - positive runtime
-- negative safety gate
+- negative safety path
 - repository whitespace
 
-The workflow reached a green state during validation.
+CI reached a green state.
 
-## 11. Deployment Status
+## 9. Deployment Status
 
-Container deployment artifacts are available:
+Repository deployment configuration is prepared through:
 
-Dockerfile
-docker-compose.yml
+- Dockerfile
+- docker-compose.yml
+- deployment_readiness.md
 
-Evidence copies are preserved in:
+Target-environment deployment has NOT been claimed as completed.
+
+The current Windows development environment does not have Docker available.
+
+Therefore the following remain external validation activities:
+
+- target container startup
+- production service connectivity
+- public/API accessibility
+- production health
+- production readiness
+- production liveness
+- production positive curriculum execution
+- production negative safety-gate execution
+
+No production deployment claim is made from this workstation.
+
+## 10. Known Limitations
+
+The remaining limitations are environmental and acceptance-related rather than implementation blockers:
+
+- target deployment environment validation
+- production configuration validation
+- observer verification
+- formal handover acceptance
+
+## 11. Repository Evidence
+
+DEP:
+
+Dep/
+
+Evidence packet:
+
+evidence_packet/
+
+Runtime proof:
+
+evidence_packet/runtime_logs/
+
+API samples:
+
+evidence_packet/api_samples/
+
+Deployment proof:
 
 evidence_packet/deployment_proof/
 
-Target-environment production deployment has not been claimed as completed by this handover.
+Screenshots:
 
-Required external validation remains:
+evidence_packet/screenshots/
 
-- target container/service startup
-- health
-- readiness
-- liveness
-- API accessibility
-- positive curriculum execution
-- negative safety-gate execution
+Review index:
 
-## 12. Known Limitations
-
-Current limitations are primarily closure and environment-specific:
-
-- production environment has not been independently validated in this evidence pass
-- environment-specific configuration requires target validation
-- observer approval is pending
-- formal handover acceptance is pending
-
-## 13. Remaining Actions
-
-### Engineering
-
-- maintain the validated capability boundary
-- provide deployment environment when available
-- support target-environment validation
-- address environment-specific failures if discovered
-
-### Observer - Vijay Dhawan
-
-Required review:
-
-- constitutional validation
-- production readiness
-- runtime verification
-- evidence review
-
-Observer status:
-
-PENDING
-
-Approval must be explicitly recorded and must not be inferred from CI or local validation.
-
-### Formal Closure
-
-Required:
-
-- target deployment proof
-- observer approval
-- final evidence review
-- formal handover acceptance
-
-## 14. Operational Notes
-
-The canonical runtime should remain the execution surface.
-
-Do not introduce a parallel TANTRA curriculum implementation.
-
-Unsupported curriculum evidence must continue to terminate at the safety gate.
-
-Future consumers should attach to the registered capability:
-
-tantra.curriculum_intelligence
-
-## 15. Repository Structure
-
-Relevant repository artifacts include:
-
-.github/workflows/tantra-runtime-ci.yml
-
-ARCHITECTURE.md
-INTEGRATION.md
-CHANGELOG.md
 REVIEW_INDEX.md
-HANDOVER.md
 
-DEP/
-
-evidence_packet/
-
-review_packets/progress/
-review_packets/proof_logs/
-
-backend/
-learning_runtime/
-retrieval/
-
-## 16. Review Artifacts
-
-Final runtime status:
-
-review_packets/progress/TANTRA_RUNTIME_FINAL_STATUS_2026-08-18.md
-
-Positive proof:
-
-review_packets/proof_logs/tantra_final_positive_runtime_proof.json
-
-Negative proof:
-
-review_packets/proof_logs/tantra_final_negative_runtime_proof.json
-
-Evidence Packet:
-
-evidence_packet/
-
-Daily Engineering Packet:
-
-DEP/
-
-## 17. Observer Review
-
-Status:
-
-PENDING
+## 12. Observer Review
 
 Assigned observer:
 
@@ -336,25 +244,58 @@ Scope:
 - production readiness
 - runtime verification
 
-Observer approval must be recorded separately.
+Status:
 
-## 18. Handover Acceptance
+PENDING
+
+Observer approval must be recorded separately and must not be inferred from engineering validation.
+
+## 13. Remaining Actions
+
+1. Validate the runtime in the target deployment environment.
+2. Capture deployment evidence.
+3. Obtain observer review from Vijay Dhawan.
+4. Obtain formal handover acceptance.
+
+## 14. Operational Notes
+
+Do not introduce a duplicate TANTRA implementation.
+
+Continue using the existing canonical UniGuru runtime boundary.
+
+Any production issue discovered during target-environment validation should be recorded in DEP/blockers.md.
+
+## 15. Repository Structure
+
+ARCHITECTURE.md
+INTEGRATION.md
+CHANGELOG.md
+REVIEW_INDEX.md
+HANDOVER.md
+Dep/
+evidence_packet/
+
+## 16. Review Artifacts
+
+The evidence packet contains:
+
+- review packet
+- screenshots
+- focused code packet
+- runtime logs
+- API samples
+- deployment proof
+
+## 17. Handover Acceptance
 
 Status:
 
 PENDING
 
-Acceptance should occur only after:
+Acceptance should be recorded by the responsible reviewer after target-environment validation and observer review.
 
-1. target-environment deployment validation
-2. runtime verification
-3. evidence review
-4. observer approval
+## 18. Final Engineering Assessment
 
-## 19. Final Engineering Assessment
+The TANTRA Curriculum Intelligence Runtime is engineering-complete and validated for the implemented runtime scope.
 
-The TANTRA Curriculum Intelligence Runtime is technically validated for the current implemented runtime scope.
-
-The validated capability is deterministic, evidence-backed, replay-safe by declared capability contract, integrated with UniGuru, and protected by an evidence-failure safety boundary.
-
-The remaining work is production-environment validation and formal external closure.
+The remaining work is target-environment deployment validation, observer review and formal acceptance.
