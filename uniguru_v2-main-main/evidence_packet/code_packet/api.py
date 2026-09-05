@@ -358,11 +358,11 @@ def _resolve_caller(request: AskRequest, raw_request: Request) -> str:
     context = dict(request.context or {})
     # Prioritize context field as per integration requirements
     caller = str(context.get("caller") or "").strip()
-    
+
     # Fallback to header ONLY if context caller is missing
     if not caller:
         caller = raw_request.headers.get("X-Caller-Name", "").strip()
-        
+
     if not caller:
         # In demo mode (no auth) or wildcard allowlist mode, accept anonymous callers
         # so /ask still reaches KB retrieval instead of hard-fallbacking to safe mode.
@@ -373,13 +373,13 @@ def _resolve_caller(request: AskRequest, raw_request: Request) -> str:
                 status_code=400,
                 detail="caller identity is required in request context or X-Caller-Name header.",
             )
-        
+
     # Enforce allowlist only when API auth mode is enabled.
     # In demo/no-auth mode we accept caller identity as telemetry metadata.
     if _API_AUTH_REQUIRED and ("*" not in _ALLOWED_CALLERS) and (caller not in _ALLOWED_CALLERS):
         _log_event("authentication_failure", {"detail": f"Caller '{caller}' not in allowlist"})
         raise HTTPException(status_code=403, detail="Forbidden: Caller not authorized for this service.")
-        
+
     return caller
 
 
@@ -1159,7 +1159,7 @@ def create_new_guru(user_id: str) -> Dict[str, Any]:
         subject="General Knowledge",
         description="A general-purpose AI guru"
     )
-    
+
     return {
         "id": guru.id,
         "name": guru.name,
@@ -1199,7 +1199,7 @@ def create_custom_guru(
         subject=request_body.subject,
         description=request_body.description
     )
-    
+
     return {
         "id": guru.id,
         "name": guru.name,
@@ -1218,11 +1218,11 @@ def create_custom_guru(
 def delete_guru_endpoint(chatbot_id: str, request: Request) -> Dict[str, Any]:
     """Delete (soft delete) a guru."""
     user_id = request.headers.get("X-User-Id", "demo-user")
-    
+
     success = guru_storage.delete_guru(chatbot_id, user_id)
     if not success:
         raise HTTPException(status_code=404, detail="Guru not found or unauthorized")
-    
+
     return {"status": "ok", "message": "Guru deleted successfully"}
 
 
@@ -1473,11 +1473,11 @@ def user_auth_status(request: Request) -> Dict[str, Any]:
     # Try to get token from Authorization header
     auth_header = request.headers.get("Authorization", "")
     token = auth_header.replace("Bearer ", "") if auth_header.startswith("Bearer ") else None
-    
+
     if not token:
         # Check localStorage token (sent by frontend)
         token = request.headers.get("X-Auth-Token")
-    
+
     # If Supabase is enabled, verify token
     if supabase_auth.enabled and token:
         user = supabase_auth.verify_token(token)
@@ -1486,7 +1486,7 @@ def user_auth_status(request: Request) -> Dict[str, Any]:
                 "authenticated": True,
                 "user": user
             }
-    
+
     # Demo mode fallback
     user_id = request.headers.get("X-User-Id", "demo-user")
     return {
@@ -1508,10 +1508,10 @@ def user_auth_status(request: Request) -> Dict[str, Any]:
 def google_oauth_callback(request_body: Dict[str, Any]) -> Dict[str, Any]:
     """Handle Google OAuth token callback."""
     token = request_body.get("token")
-    
+
     if not token:
         raise HTTPException(status_code=400, detail="Token is required")
-    
+
     # Try Supabase authentication first
     if supabase_auth.enabled:
         try:
@@ -1524,7 +1524,7 @@ def google_oauth_callback(request_body: Dict[str, Any]) -> Dict[str, Any]:
         except Exception as e:
             logger.error(f"Supabase Google auth failed: {e}")
             # Fall through to demo mode
-    
+
     # Demo mode fallback: decode token locally
     import base64
     try:
@@ -1538,7 +1538,7 @@ def google_oauth_callback(request_body: Dict[str, Any]) -> Dict[str, Any]:
                 payload += '=' * padding
             decoded = base64.urlsafe_b64decode(payload)
             user_data = json.loads(decoded)
-            
+
             user_id = user_data.get('sub', str(uuid.uuid4()))
             email = user_data.get('email', f'user-{user_id}@gmail.com')
             name = user_data.get('name', 'Google User')
@@ -1552,10 +1552,10 @@ def google_oauth_callback(request_body: Dict[str, Any]) -> Dict[str, Any]:
         user_id = str(uuid.uuid4())
         email = f'user-{user_id}@demo.local'
         name = 'Demo User'
-    
+
     # Generate demo session token
     session_token = hashlib.sha256(f"{user_id}-{time.time()}".encode()).hexdigest()
-    
+
     return {
         "token": session_token,
         "user": {
@@ -1577,10 +1577,10 @@ def user_login(request_body: Dict[str, Any]) -> Dict[str, Any]:
     """Handle user login."""
     email = request_body.get("email")
     password = request_body.get("password")
-    
+
     if not email or not password:
         raise HTTPException(status_code=400, detail="Email and password are required")
-    
+
     # Try Supabase authentication first
     if supabase_auth.enabled:
         try:
@@ -1594,11 +1594,11 @@ def user_login(request_body: Dict[str, Any]) -> Dict[str, Any]:
         except Exception as e:
             logger.error(f"Supabase login failed: {e}")
             raise HTTPException(status_code=401, detail=str(e))
-    
+
     # Demo mode fallback: accept any credentials
     user_id = hashlib.md5(email.encode()).hexdigest()[:12]
     session_token = hashlib.sha256(f"{user_id}-{time.time()}".encode()).hexdigest()
-    
+
     return {
         "token": session_token,
         "id": user_id,
@@ -1618,10 +1618,10 @@ def user_signup(request_body: Dict[str, Any]) -> Dict[str, Any]:
     name = request_body.get("name")
     email = request_body.get("email")
     password = request_body.get("password")
-    
+
     if not email or not password or not name:
         raise HTTPException(status_code=400, detail="Name, email, and password are required")
-    
+
     # Try Supabase authentication first
     if supabase_auth.enabled:
         try:
@@ -1645,11 +1645,11 @@ def user_signup(request_body: Dict[str, Any]) -> Dict[str, Any]:
             detail = str(e)
             status_code = 429 if "rate limit" in detail.lower() else 400
             raise HTTPException(status_code=status_code, detail=detail)
-    
+
     # Demo mode fallback: accept any signup
     user_id = hashlib.md5(email.encode()).hexdigest()[:12]
     session_token = hashlib.sha256(f"{user_id}-{time.time()}".encode()).hexdigest()
-    
+
     return {
         "success": True,
         "token": session_token,
@@ -1926,7 +1926,7 @@ def _llm_answer_from_chunks(query: str, chunks: list[Dict[str, Any]], max_contex
                 max_tokens=400,
             )
             ver_result = str(ver_response.choices[0].message.content or "").strip()
-            
+
             if ver_result.upper().startswith("VALID:"):
                 answer = ver_result[6:].strip()
             elif ver_result.upper().startswith("CORRECTED:"):
@@ -1935,7 +1935,7 @@ def _llm_answer_from_chunks(query: str, chunks: list[Dict[str, Any]], max_contex
                 idx = ver_result.upper().index("CORRECTED:")
                 answer = ver_result[idx + 10:].strip()
             else:
-                # If the model didn't follow formatting but generated something, we use it as a fallback, 
+                # If the model didn't follow formatting but generated something, we use it as a fallback,
                 # or just fallback to I don't know if it says invalid.
                 if "INVALID" in ver_result.upper():
                     answer = "I don't know."
@@ -2401,11 +2401,11 @@ def user_logout(request: Request) -> Dict[str, Any]:
     # Try to get token from Authorization header
     auth_header = request.headers.get("Authorization", "")
     token = auth_header.replace("Bearer ", "") if auth_header.startswith("Bearer ") else None
-    
+
     # If Supabase is enabled, logout from Supabase
     if supabase_auth.enabled and token:
         supabase_auth.logout(token)
-    
+
     return {"status": "ok", "message": "Logged out successfully"}
 
 

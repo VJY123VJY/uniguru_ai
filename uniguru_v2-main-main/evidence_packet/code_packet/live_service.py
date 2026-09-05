@@ -134,7 +134,7 @@ class LiveUniGuruService:
         )
 
         return result
-    
+
     def _resolve_unknown(self, decision: Dict[str, Any]) -> Dict[str, Any]:
         data = decision.setdefault("data", {})
         decision["decision"] = "block"

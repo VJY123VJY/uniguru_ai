@@ -1,0 +1,18 @@
+﻿{
+  "evidence_type": "TANTRA_UNIGURU_HTTP_NEGATIVE_API_SAMPLE",
+  "validated_at": "2026-08-18",
+  "endpoint": "/ask",
+  "method": "POST",
+  "query": "Explain quantum teleportation using a fictional Balbharti chapter that does not exist",
+  "decision": "block",
+  "verification_status": "BLOCKED",
+  "status_action": "BLOCK",
+  "reason": "[SAFETY_GATE] Evidence failure: no canonical retrieval match. Refusing execution.",
+  "curriculum_capability": {
+    "capability_id": "tantra.curriculum_intelligence",
+    "version": "1.0.0",
+    "schema": "TANTRA_CURRICULUM_INTELLIGENCE_CAPABILITY_V1",
+    "blocked": true,
+    "convergence_validated": false
+  }
+}
