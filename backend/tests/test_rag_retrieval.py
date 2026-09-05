@@ -3,6 +3,7 @@ import json
 import sqlite3
 import tempfile
 import pytest
+from backend.RAG import new_rag_query
 from backend.RAG.new_rag_query import NewRAGEngine, MIN_SIMILARITY_THRESHOLD, TOP_K
 
 
@@ -24,7 +25,7 @@ def test_rag_retrieval_threshold_blocks_irrelevant_chunks(monkeypatch, tmp_path)
             self.model = None
             self._faiss = None
 
-        def retrieve(self, query: str, top_k: int = 5):
+        def retrieve(self, query: str, top_k: int = 5, **kwargs):
             return [{
                 "id": 1,
                 "text": "Unrelated religious content about Jainism.",
@@ -32,9 +33,9 @@ def test_rag_retrieval_threshold_blocks_irrelevant_chunks(monkeypatch, tmp_path)
                 "score": MIN_SIMILARITY_THRESHOLD - 0.05,
             }]
 
-    monkeypatch.setattr("backend.RAG.new_rag_query.NewRAGEngine", FakeEngine)
+    monkeypatch.setattr(new_rag_query, "NewRAGEngine", FakeEngine)
 
-    engine = NewRAGEngine()
+    engine = FakeEngine()
     result = engine.answer_question("Which user actions should trigger authentication?", top_k=TOP_K)
 
     assert result["answer"] == "No relevant context found."
@@ -62,7 +63,7 @@ def test_rag_retrieval_returns_top_relevant_chunks(monkeypatch, tmp_path):
             self.model = None
             self._faiss = None
 
-        def retrieve(self, query: str, top_k: int = 5):
+        def retrieve(self, query: str, top_k: int = 5, **kwargs):
             return [
                 {
                     "id": 1,
@@ -78,9 +79,9 @@ def test_rag_retrieval_returns_top_relevant_chunks(monkeypatch, tmp_path):
                 },
             ]
 
-    monkeypatch.setattr("backend.RAG.new_rag_query.NewRAGEngine", FakeEngine)
+    monkeypatch.setattr(new_rag_query, "NewRAGEngine", FakeEngine)
 
-    engine = NewRAGEngine()
+    engine = FakeEngine()
     result = engine.answer_question("Which user actions should trigger authentication?", top_k=TOP_K)
 
     assert "Authentication should trigger when users access protected pages." in result["answer"]
@@ -109,7 +110,7 @@ def test_rag_retrieval_deduplicates_duplicates(monkeypatch, tmp_path):
             self.model = None
             self._faiss = None
 
-        def retrieve(self, query: str, top_k: int = 5):
+        def retrieve(self, query: str, top_k: int = 5, **kwargs):
             return [
                 {
                     "id": 1,
@@ -125,10 +126,11 @@ def test_rag_retrieval_deduplicates_duplicates(monkeypatch, tmp_path):
                 },
             ]
 
-    monkeypatch.setattr("backend.RAG.new_rag_query.NewRAGEngine", FakeEngine)
+    monkeypatch.setattr(new_rag_query, "NewRAGEngine", FakeEngine)
 
-    engine = NewRAGEngine()
+    engine = FakeEngine()
     result = engine.answer_question("Which user actions should trigger authentication?", top_k=TOP_K)
 
     assert len(result["retrieved"]) == 1
     assert result["retrieved"][0]["metadata"]["file_name"] == "auth1.txt"
+

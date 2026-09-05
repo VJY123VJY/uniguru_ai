@@ -220,8 +220,20 @@ class NewRAGEngine:
         # Apply strict score thresholding
         valid_retrieved = [c for c in retrieved if c.get("score", 0.0) >= MIN_SIMILARITY_THRESHOLD]
         if not valid_retrieved:
-            return {"answer": f"I could not find sufficiently relevant information (highest confidence: {retrieved[0].get('score', 0.0)} < {MIN_SIMILARITY_THRESHOLD}). Please refine your query.", "retrieved": retrieved}
-        retrieved = valid_retrieved
+            return {"answer": "No relevant context found.", "retrieved": []}
+
+        # Deduplicate chunks by normalized text
+        seen_texts = set()
+        deduped = []
+        for chunk in valid_retrieved:
+            norm = _normalize_chunk_text(chunk.get("text", ""))
+            if norm not in seen_texts:
+                seen_texts.add(norm)
+                deduped.append(chunk)
+        retrieved = deduped[:top_k]
+
+        if not retrieved:
+            return {"answer": "No relevant context found.", "retrieved": []}
 
         context_parts = []
         for i, chunk in enumerate(retrieved):
@@ -235,8 +247,8 @@ class NewRAGEngine:
 
         answer = self._synthesize_with_ollama(query, context)
         if not answer:
-            # No LLM generation or context was insufficient, return explicit no-knowledge answer.
-            return {"answer": "No relevant context found.", "retrieved": retrieved}
+            # Fallback to retrieved context if Ollama synthesis is unavailable/empty
+            answer = context
 
         return {"answer": answer, "retrieved": retrieved}
 
