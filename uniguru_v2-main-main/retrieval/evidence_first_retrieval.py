@@ -117,79 +117,181 @@ class RetrievalResult:
             "evidence": self.evidence.to_dict()
         }
 
-def build_evidence_handle(record: Dict[str, Any], query: str, confidence: float) -> EvidenceHandle:
-    """Builds an immutable evidence handle for a matched record from registries."""
+def build_evidence_handle(
+    record: Dict[str, Any],
+    query: str,
+    confidence: float,
+) -> EvidenceHandle:
+    """Build an evidence handle from canonical record evidence.
+
+    The canonical ``evidence`` object is authoritative for evidence identity,
+    textbook/edition lineage, page references, hashes, and verification status.
+
+    Authority metadata is retained from the record's existing ``source_lineage``
+    contract. No synthetic/default textbook, page, authority, or timestamp values
+    are permitted.
+    """
+    del query
+    del confidence
+
     record_id = record.get("record_id")
-    source_lineage = record.get("source_lineage") or {}
-    
-    # 1. Authority fields
-    publisher = source_lineage.get("publisher", "Maharashtra State Board of Education (Balbharti)")
-    board = source_lineage.get("board", "Maharashtra State Board")
-    isbn = source_lineage.get("isbn", "978-81-7657-001-2")
-    auth_sig = source_lineage.get("authority_signature", stable_hash(record.get("textbook_id", "") + "::AUTHORITY_GRANTED"))
-    
-    auth_handle = AuthorityHandle(
+    if not record_id:
+        raise ValueError("Canonical evidence requires record_id")
+
+    canonical = record.get("evidence")
+    if not isinstance(canonical, dict):
+        raise ValueError(
+            f"Canonical evidence missing for record_id={record_id}"
+        )
+
+    source_lineage = record.get("source_lineage")
+    if not isinstance(source_lineage, dict):
+        raise ValueError(
+            f"Canonical source_lineage missing for record_id={record_id}"
+        )
+
+    # Canonical evidence fields.
+    required_evidence_fields = (
+        "evidence_id",
+        "textbook_id",
+        "edition",
+        "chapter",
+        "section",
+        "page_numbers",
+        "source_hash",
+        "retrieval_hash",
+        "lineage_hash",
+        "verification_status",
+    )
+
+    missing = [
+        field
+        for field in required_evidence_fields
+        if canonical.get(field) in (None, "", [])
+    ]
+
+    if missing:
+        raise ValueError(
+            f"Canonical evidence incomplete for record_id={record_id}: "
+            f"missing {', '.join(missing)}"
+        )
+
+    page_numbers = canonical["page_numbers"]
+
+    if (
+        not isinstance(page_numbers, list)
+        or not page_numbers
+        or not all(isinstance(page, int) for page in page_numbers)
+    ):
+        raise ValueError(
+            f"Canonical evidence has invalid page_numbers "
+            f"for record_id={record_id}"
+        )
+
+    if canonical["verification_status"] != "VERIFIED":
+        raise ValueError(
+            f"Canonical evidence is not VERIFIED for record_id={record_id}"
+        )
+
+    textbook_id = canonical["textbook_id"]
+    edition = str(canonical["edition"])
+    chapter = canonical["chapter"]
+    section = canonical["section"]
+    source_hash = canonical["source_hash"]
+    lineage_hash = canonical["lineage_hash"]
+    evidence_id = canonical["evidence_id"]
+    retrieval_hash = canonical["retrieval_hash"]
+
+    # Verify canonical lineage integrity.
+    expected_lineage = (
+        f"{textbook_id}::{edition}::{chapter}::{section}::{page_numbers}"
+    )
+    expected_lineage_hash = stable_hash(expected_lineage)
+
+    if lineage_hash != expected_lineage_hash:
+        raise ValueError(
+            f"Canonical lineage hash mismatch for record_id={record_id}"
+        )
+
+    # Evidence ID must remain deterministically bound to record_id.
+    expected_evidence_id = str(
+        uuid.uuid5(uuid.NAMESPACE_DNS, record_id)
+    )
+
+    if evidence_id != expected_evidence_id:
+        raise ValueError(
+            f"Canonical evidence_id mismatch for record_id={record_id}"
+        )
+
+    # Authority metadata lives in source_lineage in the existing
+    # canonical dataset model. Require it; never synthesize it.
+    required_authority_fields = (
+        "publisher",
+        "board",
+        "isbn",
+        "authority_signature",
+        "verification_timestamp",
+    )
+
+    missing_authority = [
+        field
+        for field in required_authority_fields
+        if source_lineage.get(field) in (None, "")
+    ]
+
+    if missing_authority:
+        raise ValueError(
+            f"Canonical authority metadata incomplete for "
+            f"record_id={record_id}: missing "
+            f"{', '.join(missing_authority)}"
+        )
+
+    publisher = source_lineage["publisher"]
+    board = source_lineage["board"]
+    isbn = source_lineage["isbn"]
+    authority_signature = source_lineage["authority_signature"]
+    verification_timestamp = source_lineage["verification_timestamp"]
+
+    authority = AuthorityHandle(
         publisher=publisher,
         board=board,
         isbn=isbn,
-        authority_signature=auth_sig
+        authority_signature=authority_signature,
     )
 
-    # 2. Page fields
-    page_num = source_lineage.get("page", 1)
-    content_hash = source_lineage.get("source_hash", stable_hash(f"page_content_{page_num}"))
-    page_handle = PageHandle(
-        page_number=page_num,
-        content_hash=content_hash,
-        ocr_status="VERIFIED"
+    page = PageHandle(
+        page_number=page_numbers[0],
+        content_hash=source_hash,
+        ocr_status="VERIFIED",
     )
 
-    # 3. Lineage fields
-    tb_id = record.get("textbook_id") or source_lineage.get("textbook_id") or "BALBHARTI_MATH_G1_MM"
-    edition = source_lineage.get("edition") or "2023"
-    chapter = record.get("chapter") or source_lineage.get("chapter") or "Counting from 1 to 10"
-    section = source_lineage.get("section") or "Number Recognition (1-5)"
-    
-    lineage_str = f"{tb_id}::{edition}::{chapter}::{section}::{[page_num]}"
-    lineage_hash = stable_hash(lineage_str)
-    
-    lineage_handle = LineageHandle(
-        textbook_id=tb_id,
+    lineage = LineageHandle(
+        textbook_id=textbook_id,
         edition=edition,
         chapter=chapter,
         section=section,
-        lineage_hash=lineage_hash
-    )
-
-    # 4. Verification fields
-    auth_status = "VERIFIED_AUTHORITY"
-    ver_time = source_lineage.get("verification_timestamp", "2026-06-15T12:00:00+05:30")
-    
-    ver_handle = VerificationHandle(
-        authority_status=auth_status,
-        signature=auth_sig,
-        timestamp=ver_time
-    )
-
-    # 5. Core Evidence Handle
-    evidence_id = str(uuid.uuid5(uuid.NAMESPACE_DNS, record_id))
-    ret_hash = stable_hash(f"retrieval::{record_id}::{confidence}")
-
-    evidence_handle = EvidenceHandle(
-        evidence_id=evidence_id,
-        textbook_id=tb_id,
-        edition=edition,
-        chapter=chapter,
-        section=section,
-        page_numbers=[page_num],
-        source_hash=content_hash,
-        retrieval_hash=ret_hash,
         lineage_hash=lineage_hash,
-        verification_status="VERIFIED",
-        verification=ver_handle,
-        lineage=lineage_handle,
-        page=page_handle,
-        authority=auth_handle
     )
-    
-    return evidence_handle
+
+    verification = VerificationHandle(
+        authority_status="VERIFIED_AUTHORITY",
+        signature=authority_signature,
+        timestamp=verification_timestamp,
+    )
+
+    return EvidenceHandle(
+        evidence_id=evidence_id,
+        textbook_id=textbook_id,
+        edition=edition,
+        chapter=chapter,
+        section=section,
+        page_numbers=list(page_numbers),
+        source_hash=source_hash,
+        retrieval_hash=retrieval_hash,
+        lineage_hash=lineage_hash,
+        verification_status=canonical["verification_status"],
+        verification=verification,
+        lineage=lineage,
+        page=page,
+        authority=authority,
+    )

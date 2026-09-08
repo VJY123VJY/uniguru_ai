@@ -386,3 +386,53 @@ def test_42_no_silent_synthetic_content_in_registries():
         text = p.read_text(encoding="utf-8")
         assert "synthetic_expansion_seed" not in text
         assert "sample_seed" not in text
+
+
+def test_43_runtime_preserves_canonical_textbook_identity():
+    res = execute_query(
+        query="What is counting?",
+        grade=1,
+        subject="Mathematics",
+    )
+    assert res.get("textbook_id") == "BALBHARTI_MATH_G1_MM"
+
+
+def test_44_runtime_preserves_canonical_retrieval_hash():
+    data = json.loads(
+        (ROOT / "masterdb" / "balbharti" / "canonical_dataset.json")
+        .read_text(encoding="utf-8")
+    )
+
+    record = next(
+        r for r in data
+        if r.get("record_id") == "BALBHARTI_MATH_G1_MM_CONCEPT_001"
+    )
+
+    res = execute_query(
+        query="What is counting?",
+        grade=1,
+        subject="Mathematics",
+    )
+
+    assert res.get("retrieval_hash") == record["evidence"]["retrieval_hash"]
+
+
+def test_45_runtime_preserves_canonical_lineage_hash():
+    data = json.loads(
+        (ROOT / "masterdb" / "balbharti" / "canonical_dataset.json")
+        .read_text(encoding="utf-8")
+    )
+
+    record = next(
+        r for r in data
+        if r.get("record_id") == "BALBHARTI_MATH_G1_MM_CONCEPT_001"
+    )
+
+    res = execute_query(
+        query="What is counting?",
+        grade=1,
+        subject="Mathematics",
+    )
+
+    assert res.get("lineage_hash") == record["evidence"]["lineage_hash"]
+
