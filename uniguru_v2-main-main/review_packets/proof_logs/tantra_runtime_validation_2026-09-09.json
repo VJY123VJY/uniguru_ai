@@ -1,0 +1,84 @@
+﻿{
+  "evidence_type": "TANTRA_CURRICULUM_RUNTIME_VALIDATION",
+  "validation_date": "2026-09-09",
+  "owner": "Sanskar",
+  "capability_id": "tantra.curriculum_intelligence",
+  "capability_version": "1.0.0",
+  "capability_schema": "TANTRA_CURRICULUM_INTELLIGENCE_CAPABILITY_V1",
+
+  "positive_http_validation": {
+    "status": "PASS",
+    "query": "What is counting?",
+    "verification_status": "VERIFIED",
+    "convergence_validated": true,
+    "evidence_id": "8de6f3f5-c9ca-5337-86c7-f2fff523bd51",
+    "textbook_id": "BALBHARTI_MATH_G1_MM",
+    "edition": "2023",
+    "chapter": "Counting from 1 to 10",
+    "section": "Number Recognition (1-5)",
+    "page_numbers": [3],
+    "source_hash": "cceb25133efd4ac110223f732aabbdd3817b522178cd437da31ba279da0781cf",
+    "retrieval_hash": "76b0438339f414392eeab2530a348a6893e9bb19726bc5fd9f6f0952336826d1",
+    "lineage_hash": "ca3be02d69ed9de302a8903cbce396d07e93f3454ca95210670ee18bb3b22d39"
+  },
+
+  "negative_http_validation": {
+    "status": "PASS",
+    "query": "Explain quantum teleportation using a fictional Balbharti chapter that does not exist",
+    "verification_status": "BLOCKED",
+    "blocked": true,
+    "convergence_validated": false,
+    "evidence_id": null,
+    "retrieval": null,
+    "block_reason": "[SAFETY_GATE] Evidence failure: no canonical retrieval match. Refusing execution."
+  },
+
+  "replay_determinism": {
+    "status": "PASS",
+    "evidence_id_match": true,
+    "textbook_id_match": true,
+    "source_hash_match": true,
+    "retrieval_hash_match": true,
+    "lineage_hash_match": true,
+    "verification_status_run_1": "VERIFIED",
+    "verification_status_run_2": "VERIFIED"
+  },
+
+  "exception_safety": {
+    "status": "PASS",
+    "simulated_failure": "SIMULATED_TANTRA_RUNTIME_FAILURE",
+    "decision": "block",
+    "answer": null,
+    "verification_status": "BLOCKED",
+    "reason": "Canonical UniGuru runtime failed: SIMULATED_TANTRA_RUNTIME_FAILURE"
+  },
+
+  "automated_validation": {
+    "full_suite": "18 passed",
+    "curriculum_truth_suite": "45 passed"
+  },
+
+  "production_gate_audit": {
+    "authority": "PASS",
+    "evidence": "PASS",
+    "lineage": "PASS",
+    "hash": "PASS",
+    "version": "PASS",
+    "dataset_signature": "PASS",
+    "constitution": "PASS",
+    "runtime_contract": "PASS"
+  },
+
+  "deployment_status": {
+    "local_runtime_validation": "PASS",
+    "production_style_configuration": "PRESENT",
+    "target_environment_production_validation": "PENDING"
+  },
+
+  "registration_status": {
+    "capability_module": "PRESENT",
+    "capability_metadata": "PRESENT",
+    "ci_contract_validation": "PRESENT",
+    "separate_capability_registry": "NOT_REQUIRED_BY_CURRENT_REPOSITORY_PATTERN"
+  }
+}
