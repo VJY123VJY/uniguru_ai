@@ -775,12 +775,8 @@ def ask(request: AskRequest, raw_request: Request) -> Dict[str, Any]:
             response["answer"] = SAFE_FALLBACK_PREFIX
 
         return response
-    except HTTPException as exc:
-        return _build_safe_fallback_response(
-            query=request.query,
-            session_id=request.session_id,
-            reason=f"/ask recovered from {exc.status_code} condition: {exc.detail}",
-        )
+    except HTTPException:
+        raise
     except Exception as exc:
         return _build_safe_fallback_response(
             query=request.query,
