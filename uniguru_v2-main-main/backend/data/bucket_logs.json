@@ -655,5 +655,23 @@
         "confidence": 0.6858912706375122,
         "system_path": "/new_query_6phase_pipeline",
         "timestamp": "2026-04-30T11:38:37.957566+00:00"
+    },
+    {
+        "event_id": "live-acceptance-001",
+        "query": "What is counting?",
+        "signals_used": 0,
+        "final_answer": "I do not have verified knowledge to answer this question.",
+        "confidence": 0.0,
+        "system_path": "/new_query_6phase_pipeline",
+        "timestamp": "2026-09-25T11:06:23.156972+00:00"
+    },
+    {
+        "event_id": "live-acceptance-001",
+        "query": "What is counting?",
+        "signals_used": 1,
+        "final_answer": "Number Recognition: The ability to identify and recognize numerical symbols 1 to 5.",
+        "confidence": 1.0,
+        "system_path": "/new_query_6phase_pipeline",
+        "timestamp": "2026-09-25T11:50:17.469397+00:00"
     }
 ]

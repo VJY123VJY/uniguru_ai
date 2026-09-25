@@ -89,6 +89,92 @@ class AskRequest(BaseModel):
         return value
 
 
+class ChatCreateRequest(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    guruId: str = Field(..., min_length=1, max_length=128)
+    title: Optional[str] = Field(default=None, max_length=200)
+    userId: Optional[str] = Field(default=None, max_length=128)
+
+
+class ChatUpdateRequest(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    title: Optional[str] = Field(default=None, max_length=200)
+    isArchived: Optional[bool] = None
+    isActive: Optional[bool] = None
+
+
+class ChatContextItem(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    sender: str = Field(..., min_length=1, max_length=32)
+    content: str = Field(..., min_length=1)
+    timestamp: str = Field(..., min_length=1, max_length=128)
+
+
+class ChatMessageRequest(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    message: str = Field(..., min_length=1)
+    chatbotId: str = Field(..., min_length=1, max_length=128)
+    userId: Optional[str] = Field(default=None, max_length=128)
+    chatId: Optional[str] = Field(default=None, max_length=128)
+    context: list[ChatContextItem] = Field(default_factory=list)
+    generateAudio: bool = False
+
+
+class GoogleOAuthTokenRequest(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    token: str = Field(..., min_length=1)
+
+
+class UserLoginRequest(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    email: str = Field(..., min_length=1, max_length=320)
+    password: str = Field(..., min_length=1, max_length=1024)
+
+
+class UserSignupRequest(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    name: str = Field(..., min_length=1, max_length=200)
+    email: str = Field(..., min_length=1, max_length=320)
+    password: str = Field(..., min_length=1, max_length=1024)
+
+
+class NewRagRequest(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    query: str = Field(..., min_length=1)
+    domain: Optional[str] = Field(
+        None,
+        description="Optional domain hint (e.g. agriculture, historical, science, maths, physics)",
+    )
+    allow_generated_verse: bool = Field(
+        default=False,
+        description="If true, generate Sanskrit verse only when no clean canonical verse is found.",
+    )
+
+
+class CoreRequest(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    request_id: str = Field(default_factory=lambda: str(uuid.uuid4()))
+    intent: str = Field(default="information_retrieval")
+    context: Dict[str, Any] = Field(default_factory=dict)
+    required_outputs: list[str] = Field(
+        default_factory=lambda: ["signals", "final_answer"]
+    )
+    query: str = Field(default="Tell me about Mahabharat")
+    allow_generated_verse: bool = Field(
+        default=False,
+        description="If true, generate Sanskrit verse only when no clean canonical verse is found.",
+    )
+
+
 app = FastAPI(
     title="UniGuru Live Reasoning Service",
     version="1.1.0",
@@ -1228,11 +1314,11 @@ def delete_guru_endpoint(chatbot_id: str, request: Request) -> Dict[str, Any]:
 
 
 @app.post("/chat/create", tags=["Chat"], summary="Create Chat Session")
-def chat_create(request_body: Dict[str, Any], request: Request) -> Dict[str, Any]:
-    guru_id = str(request_body.get("guruId") or "").strip()
-    title = str(request_body.get("title") or "").strip()
+def chat_create(request_body: ChatCreateRequest, request: Request) -> Dict[str, Any]:
+    guru_id = request_body.guruId.strip()
+    title = (request_body.title or "").strip()
     user_id = str(
-        request_body.get("userId")
+        request_body.userId
         or request.headers.get("X-User-Id")
         or request.headers.get("X-Caller-Name")
         or "demo-user"
@@ -1328,17 +1414,18 @@ def chat_get(chat_id: str) -> Dict[str, Any]:
 
 
 @app.put("/chat/chat/{chat_id}", tags=["Chat"], summary="Update Chat Session")
-def chat_update(chat_id: str, request_body: Dict[str, Any]) -> Dict[str, Any]:
+def chat_update(chat_id: str, request_body: ChatUpdateRequest) -> Dict[str, Any]:
+    updates = request_body.model_dump(exclude_unset=True)
     with _CHAT_LOCK:
         chat = _CHAT_SESSIONS.get(chat_id)
         if not chat:
             raise HTTPException(status_code=404, detail="Chat not found")
-        if "title" in request_body and isinstance(request_body["title"], str):
-            chat["title"] = request_body["title"].strip() or chat["title"]
-        if "isArchived" in request_body:
-            chat["isArchived"] = bool(request_body["isArchived"])
-        if "isActive" in request_body:
-            chat["isActive"] = bool(request_body["isActive"])
+        if "title" in updates and isinstance(updates["title"], str):
+            chat["title"] = updates["title"].strip() or chat["title"]
+        if "isArchived" in updates:
+            chat["isArchived"] = bool(updates["isArchived"])
+        if "isActive" in updates:
+            chat["isActive"] = bool(updates["isActive"])
         chat["lastActivity"] = _utc_now_iso()
         return {"chat": _serialize_chat_session(chat, include_messages=False)}
 
@@ -1376,11 +1463,11 @@ def chat_delete_all(request: Request) -> Dict[str, Any]:
 
 
 @app.post("/chat/new", tags=["Chat"], summary="Send Message To Chat")
-def chat_new(request_body: Dict[str, Any], raw_request: Request) -> Dict[str, Any]:
-    message = str(request_body.get("message") or "").strip()
-    chatbot_id = str(request_body.get("chatbotId") or "").strip()
-    user_id = str(request_body.get("userId") or "demo-user").strip()
-    chat_id = str(request_body.get("chatId") or "").strip()
+def chat_new(request_body: ChatMessageRequest, raw_request: Request) -> Dict[str, Any]:
+    message = request_body.message.strip()
+    chatbot_id = request_body.chatbotId.strip()
+    user_id = str(request_body.userId or "demo-user").strip()
+    chat_id = str(request_body.chatId or "").strip()
     if not message:
         raise HTTPException(status_code=400, detail="message is required")
     if not chatbot_id:
@@ -1391,7 +1478,11 @@ def chat_new(request_body: Dict[str, Any], raw_request: Request) -> Dict[str, An
         chat = _CHAT_SESSIONS.get(chat_id) if chat_id else None
     if not chat:
         created = chat_create(
-            {"guruId": chatbot_id, "title": (message[:48] + "...") if len(message) > 48 else message, "userId": user_id},
+            ChatCreateRequest(
+                guruId=chatbot_id,
+                title=(message[:48] + "...") if len(message) > 48 else message,
+                userId=user_id,
+            ),
             raw_request,
         )
         chat_id = created["chat"]["id"]
@@ -1436,6 +1527,8 @@ def chat_new(request_body: Dict[str, Any], raw_request: Request) -> Dict[str, An
         "downstream_execution": router_response.get("downstream_execution"),
         "bucket_proof": router_response.get("bucket_proof"),
         "output_contract": router_response.get("output_contract"),
+        "fallback_to_llm": router_response.get("fallback_to_llm", False),
+        "fallback_reason": router_response.get("fallback_reason"),
     }
     ai_msg = {"sender": "bot", "content": answer, "timestamp": _utc_now_iso(), "metadata": ai_metadata}
     with _CHAT_LOCK:
@@ -1501,9 +1594,9 @@ def user_auth_status(request: Request) -> Dict[str, Any]:
     summary="Google OAuth Login",
     description="Authenticate user with Google OAuth 2.0 credential token"
 )
-def google_oauth_callback(request_body: Dict[str, Any]) -> Dict[str, Any]:
+def google_oauth_callback(request_body: GoogleOAuthTokenRequest) -> Dict[str, Any]:
     """Handle Google OAuth token callback."""
-    token = request_body.get("token")
+    token = request_body.token
     
     if not token:
         raise HTTPException(status_code=400, detail="Token is required")
@@ -1569,10 +1662,10 @@ def google_oauth_callback(request_body: Dict[str, Any]) -> Dict[str, Any]:
     summary="Email/Password Login",
     description="Authenticate user with email and password credentials"
 )
-def user_login(request_body: Dict[str, Any]) -> Dict[str, Any]:
+def user_login(request_body: UserLoginRequest) -> Dict[str, Any]:
     """Handle user login."""
-    email = request_body.get("email")
-    password = request_body.get("password")
+    email = request_body.email
+    password = request_body.password
     
     if not email or not password:
         raise HTTPException(status_code=400, detail="Email and password are required")
@@ -1609,11 +1702,11 @@ def user_login(request_body: Dict[str, Any]) -> Dict[str, Any]:
     summary="User Registration",
     description="Create a new user account with name, email, and password"
 )
-def user_signup(request_body: Dict[str, Any]) -> Dict[str, Any]:
+def user_signup(request_body: UserSignupRequest) -> Dict[str, Any]:
     """Handle user signup."""
-    name = request_body.get("name")
-    email = request_body.get("email")
-    password = request_body.get("password")
+    name = request_body.name
+    email = request_body.email
+    password = request_body.password
     
     if not email or not password or not name:
         raise HTTPException(status_code=400, detail="Name, email, and password are required")
@@ -1656,13 +1749,19 @@ def user_signup(request_body: Dict[str, Any]) -> Dict[str, Any]:
     }
 
 
-class NewRagRequest(BaseModel):
-    query: str = Field(..., min_length=1)
-    domain: Optional[str] = Field(None, description="Optional domain hint (e.g. agriculture, historical, science, maths, physics)")
-    allow_generated_verse: bool = Field(
-        default=False,
-        description="If true, generate Sanskrit verse only when no clean canonical verse is found.",
-    )
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 import os
 from RAG.new_rag_query import get_engine
@@ -2044,234 +2143,168 @@ def _execute_kosha_pipeline(
     trace_id: Optional[str] = None,
     user_id: Optional[str] = None,
 ) -> Dict[str, Any]:
-    from kosha.deterministic_pipeline import run_deterministic_pipeline
+    """Adapt the canonical TANTRA curriculum runtime to the existing API shape."""
+    from learning_runtime.capability.curriculum_intelligence import execute_curriculum_query
 
-    # TANTRA preparation boundary: this endpoint emits the schema-bound signal
-    # contract only. It must not call FAISS or LLM synthesis before validation.
-    return run_deterministic_pipeline(query=query, domain_hint=domain_hint, trace_id=trace_id, user_id=user_id)
+    capability = execute_curriculum_query(
+        query=query,
+        student_id=user_id or "tantra-client",
+    )
+    runtime = capability["result"]
+    verification_status = runtime.get("verification_status")
+    request_id = str(runtime.get("request_id") or trace_id or "")
+    evidence = runtime.get("runtime_evidence") or {}
+    retrieval = runtime.get("retrieval") or {}
 
-    from kosha.kosha_loader import KoshaLoader
-    from kosha.kosha_retriever import KoshaRetriever
-    from kosha.kosha_validator import KoshaEntry
-    import re
+    if verification_status == "VERIFIED":
+        curriculum = runtime.get("curriculum_intelligence") or {}
+        concept = str(curriculum.get("concept") or "").strip()
+        definition = str(curriculum.get("definition") or "").strip()
 
-    def _get_english_explanation(final_ans: str, verse_san: Optional[str]) -> str:
-        explanation = final_ans or ""
-        try:
-            import sys
-            import os
-            backend_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-            if backend_dir not in sys.path:
-                sys.path.append(backend_dir)
-            from translate_sanskrit import translate
+        if concept and definition:
+            answer = f"{concept}: {definition}"
+        elif definition:
+            answer = definition
+        else:
+            answer = "Verified curriculum knowledge was retrieved."
 
-            if final_ans and re.search(r'[\u0900-\u097F]', final_ans):
-                translation = translate(final_ans, direction="sa-to-en")
-                if "Error" not in translation:
-                    explanation = translation
-
-            if verse_san and re.search(r'[\u0900-\u097F]', verse_san):
-                verse_translation = translate(verse_san, direction="sa-to-en")
-                if "Error" not in verse_translation:
-                    explanation = f"{explanation}\n\nVerse Translation: {verse_translation}".strip()
-        except Exception as e:
-            logger.warning(f"Translation error: {e}")
-        return explanation
-
-    kosha_attempted = True
-    if not kosha_attempted:
-        raise HTTPException(status_code=500, detail="IF kosha_not_attempted -> ERROR")
-
-    now_iso = datetime.now(timezone.utc).isoformat()
-
-    # Phase 1: Query -> Kosha -> Signals
-    loader = KoshaLoader(data_sources=[str(_KOSHA_DIR)])
-    kosha_entries = loader.load_all()
-    retriever = KoshaRetriever(kosha_entries)
-    kosha_signals, _detected_domain = retriever.retrieve(query=query, domain=None)
-    kosha_signals = [
-        s
-        for s in kosha_signals
-        if float(s.get("confidence", 0.0)) > 0
-        and str(s.get("content", "")).strip()
-        and str(s.get("source", "")).strip()
-        and not _is_non_answer_content(str(s.get("content", "")))
-    ]
-
-    # If Kosha match is too weak, treat as "no valid match" to allow FAISS+LLM fallback.
-    # This prevents generic stopword tag matches from winning.
-    min_kosha_confidence = 0.25
-    kosha_signals = [s for s in kosha_signals if float(s.get("confidence", 0.0) or 0.0) >= min_kosha_confidence]
-
-    if kosha_signals:
-        best_signal = max(kosha_signals, key=lambda s: float(s.get("confidence", 0.0)))
-
-        # Prefer notebook-style final answers by grounding on FAISS chunk text,
-        # filtered to Kosha sources (file names only).
-        engine = get_faiss_engine()
-        retrieved_chunks = engine.retrieve(query=query, top_k=top_k) or []
-        allowed_sources = {str(s.get("source") or "").strip() for s in kosha_signals if str(s.get("source") or "").strip()}
-        filtered_chunks = [
-            ch for ch in retrieved_chunks
-            if str((ch.get("metadata") or {}).get("file_name") or "").strip() in allowed_sources
-        ]
-        chunks_for_answer = filtered_chunks if filtered_chunks else retrieved_chunks
-        final_answer = _llm_answer_from_chunks(query=query, chunks=chunks_for_answer)
-        final_answer = _normalize_common_names(final_answer)
-        detected_verse = _detect_sanskrit_verse(chunks_for_answer)
-        low_quality_sanskrit = _is_low_quality_ocr_sanskrit(detected_verse)
-
-        final_answer_lower = str(final_answer).strip().lower()
-        if "don't know" in final_answer_lower:
-            # Last resort: return the best Kosha content so output is never empty.
-            best_content = str(best_signal.get("content") or "").strip()
-            if best_content:
-                final_answer = best_content
-
-        best_entry = None
-        for entry in kosha_entries:
-            if str(entry.source) == str(best_signal.get("source")) and str(entry.content).strip() == final_answer:
-                best_entry = entry
-                break
-        if best_entry is None and kosha_entries:
-            best_entry = kosha_entries[0]
-
-        # Always persist a Kosha entry representing the final LLM answer.
-        kosha_entry_payload = {
-            "knowledge_id": f"KOSHA_{uuid.uuid4().hex[:12]}",
-            "domain": _infer_domain(
-                query=query,
-                domain_hint=domain_hint,
-                source=str(best_signal.get("source") or "unknown"),
-            ),
-            "content": final_answer,
-            "source": str(best_signal.get("source") or "unknown"),
-            "confidence": float(best_signal.get("confidence", 0.01)) or 0.01,
-            "timestamp": now_iso,
-            "tags": _extract_tags(query, str(best_signal.get("source") or "")),
-            "clean_content": _clean_content(final_answer),
+        matched_signal = {
+            "signal_id": retrieval.get("matched_record_id"),
+            "knowledge_id": retrieval.get("matched_record_id"),
+            "source": evidence.get("textbook_id") or "Canonical textbook",
+            "confidence": retrieval.get("confidence", 0.0),
+            "domain": retrieval.get("subject"),
+            "content": definition or answer,
+            "evidence": evidence,
+            "trace": {
+                "trace_id": request_id,
+                "source_lineage": evidence.get("lineage", {}),
+            },
         }
 
-        validated_kosha = KoshaEntry(
-            knowledge_id=kosha_entry_payload["knowledge_id"],
-            domain=kosha_entry_payload["domain"],
-            content=kosha_entry_payload["content"],
-            source=kosha_entry_payload["source"],
-            confidence=kosha_entry_payload["confidence"],
-            timestamp=kosha_entry_payload["timestamp"],
-            tags=kosha_entry_payload["tags"],
-            clean_content=kosha_entry_payload["clean_content"],
-        ).model_dump()
+        confidence = retrieval.get("confidence", 0.0)
+        retrieval_truth_payload = {
+            "layer": "CANONICAL_RUNTIME_EVIDENCE",
+            "immutable": True,
+            "trace_id": request_id,
+            "query": query,
+            "artifact_hash": runtime.get("retrieval_hash"),
+            "evidence": evidence,
+            "source_lineage": [evidence.get("lineage", {})],
+        }
 
-        verse_sanskrit: Optional[str] = None
-        note: Optional[str] = None
-        if detected_verse and not low_quality_sanskrit:
-            verse_sanskrit = detected_verse
-        elif allow_generated_verse and _query_requests_verse(query):
-            generated = _generate_sanskrit_verse(query=query, context=final_answer)
-            if generated:
-                verse_sanskrit = generated
-                note = "AI-generated Sanskrit verse (not canonical citation)"
-            elif detected_verse and low_quality_sanskrit:
-                note = "Sanskrit text detected but low quality OCR"
-        elif detected_verse and low_quality_sanskrit:
-            note = "Sanskrit text detected but low quality OCR"
+        interpretation_payload = {
+            "layer": "BOUNDED_SEMANTIC_INTERPRETATION",
+            "trace_id": request_id,
+            "answer": answer,
+            "verification_status": "VERIFIED",
+            "confidence": confidence,
+            "references": {
+                "retrieval_truth_hash": runtime.get("retrieval_hash"),
+                "accepted_signal_ids": [matched_signal["signal_id"]],
+            },
+            "authority_boundary": {
+                "may_mutate_retrieval_truth": False,
+                "may_introduce_unreferenced_claims": False,
+                "free_form_output": False,
+            },
+        }
 
         return {
+            "trace_id": request_id,
+            "query": query,
+            "answer": answer,
+            "final_answer": answer,
+            "verification_status": "VERIFIED",
+            "convergence_validated": True,
+            "confidence_breakdown": {
+                "overall": confidence,
+                "accepted_count": 1,
+                "rejected_count": 0,
+                "accepted_derivations": [],
+            },
+            "matched_signals": [matched_signal],
+            "rejected_signals": [],
+            "retrieval_truth_payload": retrieval_truth_payload,
+            "interpretation_payload": interpretation_payload,
+            "truth_interpretation_link": {
+                "trace_id": request_id,
+                "retrieval_truth_hash": runtime.get("retrieval_hash"),
+                "interpretation_hash": None,
+                "boundary_status": "ENFORCED",
+                "interpretation_references_retrieval": True,
+            },
+            "semantic_memory": {},
+            "multi_hop_traversal": {},
+            "semantic_path": [],
+            "downstream_execution": {
+                "consumer": "TANTRA_EXECUTION_CHAIN",
+                "status": "VERIFIED",
+                "trace_id": request_id,
+            },
+            "output_contract": {
+                "schema": "TANTRA_UNIGURU_INTELLIGENCE_CONTRACT_V1",
+                "contract_bound": True,
+                "downstream_consumable": True,
+                "free_form_output": False,
+                "trace_id": request_id,
+            },
+            "runtime_evidence": evidence,
+            "canonical_runtime": runtime,
             "kosha_attempted": True,
             "fallback_to_llm": False,
             "fallback_reason": None,
-            "signals": kosha_signals,
-            "final_answer": final_answer,
-            "verse_sanskrit": verse_sanskrit,
-            "english_explanation": _get_english_explanation(final_answer, verse_sanskrit),
-            "note": note,
-            "kosha_entry": validated_kosha,
+            "signals": [matched_signal],
         }
 
-    # Guard: IF kosha_attempted AND no signals -> fallback allowed to LLM
-    engine = get_faiss_engine()
-    retrieved = engine.retrieve(query=query, top_k=top_k) or []
-
-    best_source_file = "unknown"
-    best_confidence = 0.01
-    for chunk in retrieved:
-        meta = chunk.get("metadata") or {}
-        source_file = str(meta.get("file_name") or "unknown")
-        similarity_score = max(float(chunk.get("score", 0.0)), 0.0)
-        tag_score = _tag_match_score(query, source_file)
-        confidence = max(similarity_score, tag_score)
-        if confidence > best_confidence:
-            best_confidence = confidence
-            best_source_file = source_file
-
-    if best_confidence <= 0:
-        best_confidence = 0.01
-
-    # Use notebook-style chunk-grounded LLM generation for consistency.
-    final_answer = _llm_answer_from_chunks(query=query, chunks=retrieved)
-    final_answer = _normalize_common_names(final_answer)
-    final_answer = str(final_answer or "I don't know.").strip() or "I don't know."
-    clean_answer = _clean_content(final_answer)
-    detected_verse = _detect_sanskrit_verse(retrieved)
-    low_quality_sanskrit = _is_low_quality_ocr_sanskrit(detected_verse)
-    verse_sanskrit: Optional[str] = None
-    note: Optional[str] = None
-    if detected_verse and not low_quality_sanskrit:
-        verse_sanskrit = detected_verse
-    elif allow_generated_verse and _query_requests_verse(query):
-        generated = _generate_sanskrit_verse(query=query, context=final_answer)
-        if generated:
-            verse_sanskrit = generated
-            note = "AI-generated Sanskrit verse (not canonical citation)"
-        elif detected_verse and low_quality_sanskrit:
-            note = "Sanskrit text detected but low quality OCR"
-    elif detected_verse and low_quality_sanskrit:
-        note = "Sanskrit text detected but low quality OCR"
-
-    domain = _infer_domain(query=query, domain_hint=domain_hint, source=best_source_file)
-    tags = _extract_tags(query, best_source_file)
-
-    kosha_entry_payload = {
-        "knowledge_id": f"KOSHA_{uuid.uuid4().hex[:12]}",
-        "domain": domain,
-        "content": final_answer,
-        "source": best_source_file,
-        "confidence": float(best_confidence) or 0.01,
-        "timestamp": now_iso,
-        "tags": tags,
-        "clean_content": clean_answer,
-    }
-
-    validated_kosha = KoshaEntry(
-        knowledge_id=kosha_entry_payload["knowledge_id"],
-        domain=kosha_entry_payload["domain"],
-        content=kosha_entry_payload["content"],
-        source=kosha_entry_payload["source"],
-        confidence=kosha_entry_payload["confidence"],
-        timestamp=kosha_entry_payload["timestamp"],
-        tags=kosha_entry_payload["tags"],
-        clean_content=kosha_entry_payload["clean_content"],
-    ).model_dump()
-
-    _persist_kosha_entry(validated_kosha)
-
-    # Convert newly created Kosha entry -> Signal (no empty signals allowed)
-    signals = [_kosha_entry_to_signal(validated_kosha, idx=0)]
-    if not signals or not str(signals[0].get("content") or "").strip():
-        raise HTTPException(status_code=500, detail="No empty signals allowed.")
+    reason = str(
+        runtime.get("block_reason")
+        or "[SAFETY_GATE] Canonical curriculum execution was blocked."
+    )
+    answer = "I could not verify this against the canonical curriculum."
 
     return {
+        "trace_id": request_id,
+        "query": query,
+        "answer": answer,
+        "final_answer": answer,
+        "verification_status": "BLOCKED",
+        "convergence_validated": False,
+        "confidence_breakdown": {
+            "overall": 0.0,
+            "accepted_count": 0,
+            "rejected_count": 1,
+            "accepted_derivations": [],
+            "reason": reason,
+        },
+        "matched_signals": [],
+        "rejected_signals": [{"reason": reason}],
+        "retrieval_truth_payload": None,
+        "interpretation_payload": None,
+        "truth_interpretation_link": None,
+        "semantic_memory": {},
+        "multi_hop_traversal": {},
+        "semantic_path": [],
+        "downstream_execution": {
+            "consumer": "TANTRA_EXECUTION_CHAIN",
+            "status": "BLOCKED",
+            "trace_id": request_id,
+        },
+        "output_contract": {
+            "schema": "TANTRA_UNIGURU_INTELLIGENCE_CONTRACT_V1",
+            "contract_bound": True,
+            "downstream_consumable": False,
+            "free_form_output": False,
+            "trace_id": request_id,
+        },
+        "runtime_evidence": {},
+        "canonical_runtime": runtime,
         "kosha_attempted": True,
-        "fallback_to_llm": True,
-        "fallback_reason": "zero_valid_kosha_match",
-        "signals": signals,
-        "final_answer": final_answer,
-        "verse_sanskrit": verse_sanskrit,
-        "english_explanation": _get_english_explanation(final_answer, verse_sanskrit),
-        "note": note,
-        "kosha_entry": validated_kosha,
+        "fallback_to_llm": False,
+        "fallback_reason": reason,
+        "signals": [],
     }
+
 
 @app.post(
     "/new_rag",
@@ -2291,6 +2324,8 @@ def new_rag_endpoint(request: NewRagRequest, token: HTTPAuthorizationCredentials
             top_k=5,
             allow_generated_verse=bool(request.allow_generated_verse),
         )
+    except HTTPException:
+        raise
     except Exception as e:
         logger.error(f"Error querying FAISS Kosha RAG: {e}")
         raise HTTPException(status_code=500, detail=str(e))
@@ -2300,16 +2335,6 @@ def new_rag_endpoint(request: NewRagRequest, token: HTTPAuthorizationCredentials
 # NEW: 6-PHASE CORE UNIFIED PIPELINE (/new_query)
 # ==============================================================
 
-class CoreRequest(BaseModel):
-    request_id: str = Field(default_factory=lambda: str(uuid.uuid4()))
-    intent: str = Field(default="information_retrieval")
-    context: Dict[str, Any] = Field(default_factory=dict)
-    required_outputs: list = Field(default=["signals", "final_answer"])
-    query: str = Field(default="Tell me about Mahabharat")
-    allow_generated_verse: bool = Field(
-        default=False,
-        description="If true, generate Sanskrit verse only when no clean canonical verse is found.",
-    )
 
 def mock_samachar_system(query: str):
     return {
@@ -2381,6 +2406,8 @@ def new_query_endpoint(request: CoreRequest, token: HTTPAuthorizationCredentials
         )
 
         return final_payload
+    except HTTPException:
+        raise
     except Exception as e:
         logger.error(f"Error in Core Query pipeline: {e}")
         raise HTTPException(status_code=500, detail=str(e))

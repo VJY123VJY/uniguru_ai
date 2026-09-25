@@ -8,7 +8,7 @@ import uuid
 from datetime import datetime
 from typing import Dict, List, Optional
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, ConfigDict, Field
 
 
 class Guru(BaseModel):
@@ -25,6 +25,7 @@ class Guru(BaseModel):
 
 class CreateGuruRequest(BaseModel):
     """Request body for creating a custom guru."""
+    model_config = ConfigDict(extra="forbid")
     name: str = Field(..., min_length=1, max_length=100)
     subject: str = Field(..., min_length=1, max_length=200)
     description: Optional[str] = Field(default=None, max_length=1000)

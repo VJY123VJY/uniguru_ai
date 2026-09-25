@@ -3673,6 +3673,8 @@ const ChatContainer: React.FC = () => {
     const memoryEvent = metadata.semantic_memory?.event || {};
     const traversalPath = metadata.multi_hop_traversal?.paths?.[0] || [];
     const downstreamStatus = metadata.downstream_execution?.status || "UNKNOWN";
+    const fallbackToLlm = metadata.fallback_to_llm === true;
+    const evidence = metadata.retrieval_truth_payload?.evidence || {};
 
     return (
       <div className="mt-3 w-full rounded-md border border-cyan-400/20 bg-slate-950/70 p-3 text-xs text-gray-200">
@@ -3697,6 +3699,12 @@ const ChatContainer: React.FC = () => {
             <div className="text-gray-400">Downstream</div>
             <div className="font-semibold text-cyan-200">{downstreamStatus}</div>
           </div>
+          <div>
+            <div className="text-gray-400">LLM Fallback</div>
+            <div className={fallbackToLlm ? "font-semibold text-amber-300" : "font-semibold text-emerald-300"}>
+              {fallbackToLlm ? "ENABLED" : "DISABLED"}
+            </div>
+          </div>
         </div>
         <div className="mt-2 border-t border-white/10 pt-2">
           <div className="text-gray-400">Trace</div>
@@ -3714,6 +3722,17 @@ const ChatContainer: React.FC = () => {
             <div>{metadata.semantic_memory?.unresolved_threads?.length || 0} unresolved threads</div>
           </div>
         </div>
+        {evidence.textbook_id && (
+          <div className="mt-2">
+            <div className="text-gray-400">Canonical Evidence</div>
+            <div className="break-words"><span className="text-gray-400">Textbook:</span> {evidence.textbook_id}</div>
+            <div className="break-words"><span className="text-gray-400">Edition:</span> {evidence.edition || "unknown"}</div>
+            <div className="break-words"><span className="text-gray-400">Chapter:</span> {evidence.chapter || "unknown"}</div>
+            <div className="break-words"><span className="text-gray-400">Section:</span> {evidence.section || "unknown"}</div>
+            <div className="break-words"><span className="text-gray-400">Page:</span> {Array.isArray(evidence.page_numbers) ? evidence.page_numbers.join(", ") : evidence.page_numbers || "unknown"}</div>
+            <div className="break-words"><span className="text-gray-400">Status:</span> {evidence.verification_status || "unknown"}</div>
+          </div>
+        )}
         {lineage.length > 0 && (
           <div className="mt-2">
             <div className="text-gray-400">Source Lineage</div>

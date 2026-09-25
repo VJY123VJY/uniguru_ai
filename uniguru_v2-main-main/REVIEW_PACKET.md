@@ -3,7 +3,7 @@
 
 **Sprint Goal:** Convert UniGuru from a curriculum-shaped runtime into a verified curriculum intelligence platform.
 
-**Date Generated:** 2026-06-23  
+**Date Generated:** 2026-06-23
 **Verdict:** ✅ APPROVED — 94/94 tests passing
 
 ---
@@ -273,3 +273,251 @@ uniguru_v2-main/
 ---
 
 *Review packet generated: 2026-06-23. All artifacts committed to repository.*
+
+---
+
+# T-GOV-F01 REMEDIATION ADDENDUM
+## TANTRA Curriculum Intelligence Runtime
+
+**Task:** T-GOV-F01
+**Validation date:** 2026-09-23
+
+### Remediation Scope
+
+The remediation addressed strict API inbound contracts, runtime boundary
+coverage, deterministic execution verification, dependency pinning, and
+governance/code packet completeness.
+
+### Implemented Artifacts
+
+- backend/service/api.py
+- backend/tests/test_api_request_contracts.py
+- backend/tests/test_curriculum_determinism.py
+- backend/tests/test_tgov_canonical_runtime_boundaries.py
+-
+requirements.txt
+- CODE_PACKET.md
+- CODE_INDEX.md
+
+### Canonical Execution Chain
+
+TANTRA capability adapter -> canonical runtime -> retrieval engine ->
+evidence-first retrieval -> learning intelligence -> mastery/constitutional
+runtime -> runtime contract.
+
+### Verification Results
+
+Full regression:
+
+76 passed
+
+Determinism:
+
+50 consecutive executions produced one identical canonical state hash and
+one identical runtime evidence hash.
+
+Canonical state SHA-256:
+
+8391251826788e78ffcdfb58b5aaa3cfb684c73c33d2f01c17e9a13125296ffc
+
+Runtime evidence SHA-256:
+
+5b991c3cd29161bb506eaf0b49baf1c1db7e6b6ecb168d98f28cf19461e6babb
+
+Combined T-GOV execution-chain coverage:
+
+91%
+
+Dependency audit:
+
+98 dependencies
+0 unpinned or malformed
+
+Pinned verification tooling:
+
+pytest==9.0.3
+pytest-cov==7.1.0
+coverage==7.16.1
+pytest-asyncio==1.4.0
+
+### API Boundary Verification
+
+Strict inbound request models use ConfigDict(extra="forbid").
+
+Unknown request fields were verified to return HTTP 422.
+
+Invalid authentication was verified to retain HTTP 401 rather than becoming
+HTTP 500.
+
+### Acceptance Gate Record
+
+| Gate | Result |
+|---|---|
+| Full pytest regression | PASS — 76 passed |
+| 50-run determinism | PASS |
+| T-GOV coverage | PASS — 91% |
+| Dependency pinning | PASS — 0 unpinned/malformed |
+| Strict inbound API schemas | PASS |
+| Authentication error boundary | PASS |
+
+### Review Boundary
+
+This addendum records the T-GOV-F01 remediation evidence obtained on
+2026-09-23 and supplements, rather than replaces, the historical Phase 1-6
+review record above.
+
+### Final API Schema Hardening Extension
+
+The remaining CreateGuruRequest model in
+bbbackend/service/guru_models.py was hardened with
+ConfigDict(extra="forbid").
+
+This completes the verified strict Pydantic inbound-schema coverage for the
+structured JSON request bodies identified during the route audit.
+
+Post-change verification:
+
+API contract tests: 18 passed
+
+Full regression: 76 passed in 3.87s
+
+
+Final API contract verification: 21 passed in 2.58s
+
+
+### OpenAPI Request-Schema Verification
+
+All structured JSON POST/PUT request-body routes were verified through the generated FastAPI OpenAPI schema. The request models were moved before route registration to resolve Pydantic forward references correctly.
+
+OpenAPI verification: PASS
+Structured request-body routes verified: 11
+Regression test result: 21 passed in 2.58s
+
+
+### Final T-GOV Coverage Verification
+
+Focused T-GOV validation suite: 45 passed in 5.06s.
+Combined T-GOV execution-chain coverage: 91% (446 statements, 42 missed).
+
+
+### Final API Boundary Matrix
+
+Permanent automated coverage includes an 11-route malformed-body matrix across all structured POST/PUT request-body routes. Each route rejects the undeclared test field with HTTP 422.
+API contract suite result: 21 passed in 2.58s.
+
+
+### FINAL FULL REGRESSION
+
+Final full regression after all T-GOV-F01 implementation and validation changes: 76 passed in 3.87s.
+
+### T-GOV Dependency Compatibility Validation
+
+The mission prompt specifies pytest==9.0.3 with pytest-asyncio==0.24.0. That exact pair is dependency-incompatible because pytest-asyncio==0.24.0 requires a pytest version below 9.0. The validated compatible test-tooling pin is pytest-asyncio==1.4.0.
+
+Validation performed in isolated `.venv_tgov`:
+- requirements.txt dependency resolution: PASS
+- pip check: PASS
+- full regression: 76 passed
+- determinism test: 1 passed
+- focused T-GOV coverage: 45 passed, 91% total coverage
+
+
+# Live UniGuru UI Acceptance — 2026-09-25
+
+## Environment
+
+- Frontend: `http://127.0.0.1:5173/chatpage`
+- Backend: `http://127.0.0.1:8000`
+- Guru: `TANTRA Curriculum Guru` — Mathematics
+
+## Test A — Positive Canonical Retrieval
+
+Query: `What is counting?`
+
+Observed in the live UI:
+
+- Verification Status: `VERIFIED`
+- Confidence: `100.0%`
+- Signals: `1 accepted / 0 rejected`
+- Downstream: `VERIFIED`
+- LLM Fallback: `DISABLED`
+- Textbook: `BALBHARTI_MATH_G1_MM`
+- Edition: `2023`
+- Chapter: `Counting from 1 to 10`
+- Section: `Number Recognition (1-5)`
+- Page: `3`
+
+Evidence: `review_packets/ui_live_test/positive_verified.png`
+
+## Test B — Negative Safety Boundary
+
+Query: `Explain quantum teleportation using a fictional Balbharti chapter that does not exist.`
+
+Observed in the live UI:
+
+- Response: `I could not verify this against the canonical curriculum.`
+- Verification Status: `BLOCKED`
+- Confidence: `0.0%`
+- Signals: `0 accepted / 1 rejected`
+- Downstream: `BLOCKED`
+- LLM Fallback: `DISABLED`
+- No fabricated textbook/chapter/page evidence shown.
+
+Independent backend verification returned `FALLBACK_TO_LLM=False` with:
+
+`[SAFETY_GATE] Evidence failure: no canonical retrieval match. Refusing execution.`
+
+Evidence: `review_packets/ui_live_test/negative_blocked.png`
+
+## Test C — Repeatability
+
+Repeated query: `What is counting?`
+
+Observed stable across two live `/chat/new` executions:
+
+- Content
+- Verification status
+- Textbook identity
+- Edition
+- Chapter
+- Section
+- Page
+- Source hash
+- Retrieval hash
+- Lineage hash
+- Canonical record
+
+Per-request trace IDs differed, as expected.
+
+Evidence: `review_packets/ui_live_test/repeatability_verified.png`
+
+## Test D — Empty Input
+
+Observed:
+
+- Empty message was not submitted.
+- No backend error was shown.
+- No stack trace was shown.
+- No fabricated response or false `VERIFIED` state was shown.
+
+Evidence: `review_packets/ui_live_test/empty_input.png`
+
+## Backend/Error-State Witness
+
+A dedicated UI witness for a backend-unavailable/error response was not successfully captured. During the attempted outage test, stopping the backend caused the application to redirect to `/login`, so that screenshot is recorded as session/error handling behavior rather than as a completed backend-error acceptance witness.
+
+## UI Acceptance Status
+
+Positive canonical retrieval: `VERIFIED`
+
+Negative safety boundary: `VERIFIED`
+
+Repeatability: `VERIFIED`
+
+Empty-input boundary: `VERIFIED`
+
+Dedicated backend-error UI witness: `PENDING`
+
+Overall live UI acceptance: `PARTIALLY VERIFIED` pending the dedicated backend/error-state witness.
+
+Production Integration status: `PARTIALLY VERIFIED`

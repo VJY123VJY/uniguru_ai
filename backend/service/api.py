@@ -1580,8 +1580,13 @@ def user_signup(request_body: Dict[str, Any]) -> Dict[str, Any]:
 
 
 class NewRagRequest(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
     query: str = Field(..., min_length=1)
-    domain: Optional[str] = Field(None, description="Optional domain hint (e.g. agriculture, historical, science, maths, physics)")
+    domain: Optional[str] = Field(
+        None,
+        description="Optional domain hint (e.g. agriculture, historical, science, maths, physics)",
+    )
     allow_generated_verse: bool = Field(
         default=False,
         description="If true, generate Sanskrit verse only when no clean canonical verse is found.",
@@ -2016,10 +2021,14 @@ def ask_uniguru_endpoint(request: NewRagRequest, token: HTTPAuthorizationCredent
 # ==============================================================
 
 class CoreRequest(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
     request_id: str = Field(default_factory=lambda: str(uuid.uuid4()))
     intent: str = Field(default="information_retrieval")
     context: Dict[str, Any] = Field(default_factory=dict)
-    required_outputs: list = Field(default=["signals", "final_answer"])
+    required_outputs: list[str] = Field(
+        default_factory=lambda: ["signals", "final_answer"]
+    )
     query: str = Field(default="Tell me about Mahabharat")
     allow_generated_verse: bool = Field(
         default=False,

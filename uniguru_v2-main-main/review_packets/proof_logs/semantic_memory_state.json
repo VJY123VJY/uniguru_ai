@@ -525,10 +525,66 @@
       "unresolved_thread_opened": true,
       "updated_at": "2026-05-13T14:06:48.339285Z",
       "user_id": "constitutional-demo-user"
+    },
+    {
+      "canonical_authority_granted": false,
+      "constitutional_event_hash": "b0bd8adc672329913b4be41acf67c4a4118e98830d0e590fc958cfce1cad1e38",
+      "contradiction_pressure": 0.0,
+      "entities_touched": [],
+      "event": "semantic_memory_update",
+      "memory_classification": "transient",
+      "trace_id": "chat_2ee90f74-7d77-4d12-9465-526bb0b9172b_884508f2aad9",
+      "unresolved_thread_opened": true,
+      "updated_at": "2026-09-25T11:01:04.944362Z",
+      "user_id": "68dbd4ae1585"
+    },
+    {
+      "canonical_authority_granted": false,
+      "constitutional_event_hash": "8308134ee464bd2e26b59aafc9102df6fb53e27f70ec2334aa3c955fe7dd3c42",
+      "contradiction_pressure": 0.0,
+      "entities_touched": [],
+      "event": "semantic_memory_update",
+      "memory_classification": "transient",
+      "trace_id": "chat_2e1e9a26-00ac-462d-9171-0debbd78bc14_884508f2aad9",
+      "unresolved_thread_opened": true,
+      "updated_at": "2026-09-25T11:02:08.719119Z",
+      "user_id": "68dbd4ae1585"
+    },
+    {
+      "canonical_authority_granted": false,
+      "constitutional_event_hash": "48fac7bb5984eb7e2cebc5376d636daa3135a8598c3bbcfe17b9eb80eea031c0",
+      "contradiction_pressure": 0.0,
+      "entities_touched": [],
+      "event": "semantic_memory_update",
+      "memory_classification": "transient",
+      "trace_id": "live-acceptance-001",
+      "unresolved_thread_opened": true,
+      "updated_at": "2026-09-25T11:06:23.125037Z",
+      "user_id": "tantra-client"
     }
   ],
   "schema": "UNIGURU_SEMANTIC_MEMORY_V1",
   "unresolved_threads": {
+    "68dbd4ae1585:chat_2e1e9a26-00ac-462d-9171-0debbd78bc14_884508f2aad9": {
+      "contradiction_pressure": 0.0,
+      "query": "What is counting?",
+      "rejected_signal_count": 12,
+      "state": "open",
+      "trace_id": "chat_2e1e9a26-00ac-462d-9171-0debbd78bc14_884508f2aad9",
+      "updated_at": "2026-09-25T11:02:08.719119Z",
+      "user_id": "68dbd4ae1585",
+      "verification_status": "NO_VERIFIED_KNOWLEDGE"
+    },
+    "68dbd4ae1585:chat_2ee90f74-7d77-4d12-9465-526bb0b9172b_884508f2aad9": {
+      "contradiction_pressure": 0.0,
+      "query": "What is counting?",
+      "rejected_signal_count": 12,
+      "state": "open",
+      "trace_id": "chat_2ee90f74-7d77-4d12-9465-526bb0b9172b_884508f2aad9",
+      "updated_at": "2026-09-25T11:01:04.944362Z",
+      "user_id": "68dbd4ae1585",
+      "verification_status": "NO_VERIFIED_KNOWLEDGE"
+    },
     "anonymous:probe2_0": {
       "contradiction_pressure": 0.0,
       "query": "What is Akshar Purushottam Darshan?",
@@ -719,6 +775,16 @@
       "user_id": "constitutional-demo-user",
       "verification_status": "NO_VERIFIED_KNOWLEDGE"
     },
+    "tantra-client:live-acceptance-001": {
+      "contradiction_pressure": 0.0,
+      "query": "What is counting?",
+      "rejected_signal_count": 12,
+      "state": "open",
+      "trace_id": "live-acceptance-001",
+      "updated_at": "2026-09-25T11:06:23.125037Z",
+      "user_id": "tantra-client",
+      "verification_status": "NO_VERIFIED_KNOWLEDGE"
+    },
     "tantra-demo-user:tantra_contradiction_governance": {
       "contradiction_pressure": 0.0,
       "query": "Explain dharma and rajadharma for governance",
@@ -770,8 +836,17 @@
       "verification_status": "NO_VERIFIED_KNOWLEDGE"
     }
   },
-  "updated_at": "2026-05-13T14:06:48.339285Z",
+  "updated_at": "2026-09-25T11:06:23.125037Z",
   "users": {
+    "68dbd4ae1585": {
+      "continuity_score": 0.2,
+      "last_seen": "2026-09-25T11:02:08.719119Z",
+      "queries": 2,
+      "trace_ids": [
+        "chat_2ee90f74-7d77-4d12-9465-526bb0b9172b_884508f2aad9",
+        "chat_2e1e9a26-00ac-462d-9171-0debbd78bc14_884508f2aad9"
+      ]
+    },
     "anonymous": {
       "continuity_score": 0.9,
       "last_seen": "2026-05-08T10:06:52.854555Z",
@@ -803,6 +878,14 @@
         "constitutional_replay_qubit",
         "constitutional_lineage_vishnu",
         "constitutional_transient_governance"
+      ]
+    },
+    "tantra-client": {
+      "continuity_score": 0.15,
+      "last_seen": "2026-09-25T11:06:23.125037Z",
+      "queries": 1,
+      "trace_ids": [
+        "live-acceptance-001"
       ]
     },
     "tantra-demo-user": {
