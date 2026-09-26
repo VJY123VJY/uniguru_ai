@@ -504,7 +504,16 @@ Evidence: `review_packets/ui_live_test/empty_input.png`
 
 ## Backend/Error-State Witness
 
-A dedicated UI witness for a backend-unavailable/error response was not successfully captured. During the attempted outage test, stopping the backend caused the application to redirect to `/login`, so that screenshot is recorded as session/error handling behavior rather than as a completed backend-error acceptance witness.
+The backend on `http://127.0.0.1:8000` was stopped while the existing `/chatpage` session remained open.
+
+Observed in the live UI:
+- The request remained on the chat page.
+- A safe user-facing error was shown: `Sorry, I'm having trouble responding right now. Please try again.`
+- No stack trace was shown.
+- No fabricated answer was shown.
+- No false `VERIFIED` state or fabricated evidence was shown.
+
+Evidence: `review_packets/ui_live_test/backend_error.png`
 
 ## UI Acceptance Status
 
@@ -516,8 +525,8 @@ Repeatability: `VERIFIED`
 
 Empty-input boundary: `VERIFIED`
 
-Dedicated backend-error UI witness: `PENDING`
+Dedicated backend-error UI witness: `VERIFIED`
 
-Overall live UI acceptance: `PARTIALLY VERIFIED` pending the dedicated backend/error-state witness.
+Overall live UI acceptance: `VERIFIED`
 
-Production Integration status: `PARTIALLY VERIFIED`
+Production Integration status: `PARTIALLY VERIFIED` — live acceptance was verified in the local UniGuru frontend/backend environment; production deployment validation was not performed.

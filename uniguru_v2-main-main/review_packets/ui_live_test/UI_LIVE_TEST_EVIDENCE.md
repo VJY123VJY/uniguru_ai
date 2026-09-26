@@ -65,5 +65,33 @@ Observed behavior:
 
 Evidence image: `empty_input.png`
 
-## Remaining Acceptance Item
-A backend/error-state UI witness has not yet been captured. Final UI verdict should remain pending until that boundary is exercised and recorded.
+## Test E — Backend-Unavailable / Error-State Witness
+
+Test setup: The backend on `http://127.0.0.1:8000` was stopped while the existing `/chatpage` browser session remained open.
+
+Query: `What is counting?`
+
+Observed in the live UI:
+- The request remained on the chat page.
+- A safe user-facing error was shown: `Sorry, I'm having trouble responding right now. Please try again.`
+- No stack trace was shown.
+- No fabricated answer was shown.
+- No false `VERIFIED` state or fabricated evidence was shown.
+
+Evidence image: `backend_error.png`
+
+## Final UI Acceptance Status
+
+Test A — Positive canonical retrieval: `VERIFIED`
+
+Test B — Negative safety boundary: `VERIFIED`
+
+Test C — Repeatability: `VERIFIED`
+
+Test D — Empty-input boundary: `VERIFIED`
+
+Test E — Backend-unavailable/error-state boundary: `VERIFIED`
+
+Overall live UI acceptance: `VERIFIED`
+
+Production Integration status: `PARTIALLY VERIFIED` — live acceptance was verified in the local UniGuru frontend/backend environment; production deployment validation was not performed.
